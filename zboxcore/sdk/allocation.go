@@ -23,7 +23,6 @@ import (
 	"time"
 
 	"github.com/0chain/gosdk/core/client"
-	"github.com/0chain/gosdk/core/encryption"
 	"github.com/0chain/gosdk/core/transaction"
 
 	"github.com/0chain/common/core/currency"
@@ -449,15 +448,11 @@ func (a *Allocation) InitAllocation() {
 
 func (a *Allocation) generateAndSetOwnerSigningPublicKey() {
 	//create ecdsa public key from signature
-	hashData := fmt.Sprintf("%s:%s", a.OwnerPublicKey, "owner_signing_public_key")
-	sig, err := client.Sign(encryption.Hash(hashData), a.Owner)
+	privateSigningKey, err := generateOwnerSigningKey(a.OwnerPublicKey, a.Owner)
 	if err != nil {
-		logger.Logger.Error("error during sign", zap.Error(err))
+		l.Logger.Error("Failed to generate owner signing key", zap.Error(err))
 		return
 	}
-	//use this signature as entropy to generate ecdsa key pair
-	decodedSig, _ := hex.DecodeString(sig)
-	privateSigningKey := ed25519.NewKeyFromSeed(decodedSig[:32])
 	if a.OwnerSigningPublicKey == "" {
 		pubKey := privateSigningKey.Public().(ed25519.PublicKey)
 		a.OwnerSigningPublicKey = hex.EncodeToString(pubKey)
