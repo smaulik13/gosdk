@@ -457,6 +457,12 @@ func (a *Allocation) generateAndSetOwnerSigningPublicKey() {
 		pubKey := privateSigningKey.Public().(ed25519.PublicKey)
 		a.OwnerSigningPublicKey = hex.EncodeToString(pubKey)
 		//TODO: save this public key to blockchain
+		hash, _, err := UpdateAllocation(0, false, a.ID, 0, "", "", "", a.OwnerSigningPublicKey, false, nil)
+		if err != nil {
+			l.Logger.Error("Failed to update owner signing public key", zap.Error(err))
+			return
+		}
+		l.Logger.Info("Owner signing public key updated with transaction : ", zap.String("hash", hash))
 	}
 	a.privateSigningKey = privateSigningKey
 }
@@ -3138,11 +3144,11 @@ func (a *Allocation) UpdateWithRepair(
 	size int64,
 	extend bool,
 	lock uint64,
-	addBlobberId, addBlobberAuthTicket, removeBlobberId string,
+	addBlobberId, addBlobberAuthTicket, removeBlobberId, ownerSigninPublicKey string,
 	setThirdPartyExtendable bool, fileOptionsParams *FileOptionsParameters,
 	statusCB StatusCallback,
 ) (string, error) {
-	updatedAlloc, hash, isRepairRequired, err := a.UpdateWithStatus(size, extend, lock, addBlobberId, addBlobberAuthTicket, removeBlobberId, setThirdPartyExtendable, fileOptionsParams, statusCB)
+	updatedAlloc, hash, isRepairRequired, err := a.UpdateWithStatus(size, extend, lock, addBlobberId, addBlobberAuthTicket, removeBlobberId, ownerSigninPublicKey, setThirdPartyExtendable, fileOptionsParams, statusCB)
 	if err != nil {
 		return hash, err
 	}
@@ -3173,7 +3179,7 @@ func (a *Allocation) UpdateWithStatus(
 	size int64,
 	extend bool,
 	lock uint64,
-	addBlobberId, addBlobberAuthTicket, removeBlobberId string,
+	addBlobberId, addBlobberAuthTicket, removeBlobberId, ownerSigninPublicKey string,
 	setThirdPartyExtendable bool, fileOptionsParams *FileOptionsParameters,
 	statusCB StatusCallback,
 ) (*Allocation, string, bool, error) {
@@ -3186,7 +3192,7 @@ func (a *Allocation) UpdateWithStatus(
 	}
 
 	l.Logger.Info("Updating allocation")
-	hash, _, err := UpdateAllocation(size, extend, a.ID, lock, addBlobberId, addBlobberAuthTicket, removeBlobberId, setThirdPartyExtendable, fileOptionsParams)
+	hash, _, err := UpdateAllocation(size, extend, a.ID, lock, addBlobberId, addBlobberAuthTicket, removeBlobberId, ownerSigninPublicKey, setThirdPartyExtendable, fileOptionsParams)
 	if err != nil {
 		return alloc, "", isRepairRequired, err
 	}

@@ -128,7 +128,7 @@ func UpdateAllocation(
 	extend bool,
 	allocationID string,
 	lock uint64,
-	addBlobberId, addBlobberAuthTicket, removeBlobberId string,
+	addBlobberId, addBlobberAuthTicket, removeBlobberId, ownerSigninPublicKey string,
 	setThirdPartyExtendable bool, fileOptionsParams *FileOptionsParameters,
 ) (hash string, nonce int64, err error) {
 
@@ -155,6 +155,7 @@ func UpdateAllocation(
 	updateAllocationRequest["add_blobber_auth_ticket"] = addBlobberAuthTicket
 	updateAllocationRequest["remove_blobber_id"] = removeBlobberId
 	updateAllocationRequest["set_third_party_extendable"] = setThirdPartyExtendable
+	updateAllocationRequest["owner_signing_public_key"] = ownerSigninPublicKey
 	updateAllocationRequest["file_options_changed"], updateAllocationRequest["file_options"] = calculateAllocationFileOptions(alloc.FileOptions, fileOptionsParams)
 
 	sn := transaction.SmartContractTxnData{
