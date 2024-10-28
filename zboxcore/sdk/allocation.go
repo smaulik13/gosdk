@@ -449,7 +449,7 @@ func (a *Allocation) InitAllocation() {
 
 func (a *Allocation) generateAndSetOwnerSigningPublicKey() {
 	//create ecdsa public key from signature
-	hashData := fmt.Sprintf("%s:%s:%s", a.ID, a.Owner, "owner_signing_public_key")
+	hashData := fmt.Sprintf("%s:%s", a.OwnerPublicKey, "owner_signing_public_key")
 	sig, err := client.Sign(encryption.Hash(hashData), a.Owner)
 	if err != nil {
 		logger.Logger.Error("error during sign", zap.Error(err))
