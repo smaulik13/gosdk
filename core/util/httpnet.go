@@ -188,3 +188,33 @@ func (r *PostRequest) Post() (*PostResponse, error) {
 	}
 	return result, nil
 }
+
+func (r *PostRequest) PostWithTimeout(timeout time.Duration) (*PostResponse, error) {
+	result := &PostResponse{}
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	err := httpDo(r.req.WithContext(ctx), ctx, cancel, func(resp *http.Response, err error) error {
+		if err != nil {
+			return err
+		}
+		if resp.Body != nil {
+			defer resp.Body.Close()
+		} else {
+			return fmt.Errorf("response body is nil")
+		}
+
+		rspBy, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return err
+		}
+		result.Url = r.url
+		result.StatusCode = resp.StatusCode
+		result.Status = resp.Status
+		result.Body = string(rspBy)
+		return nil
+	})
+	if err != nil {
+		return nil, err // Ensure you propagate the error
+	}
+	return result, nil
+}
