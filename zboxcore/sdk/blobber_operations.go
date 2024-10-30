@@ -140,7 +140,7 @@ func UpdateAllocation(
 		return "", 0, sdkNotInitialized
 	}
 
-	alloc, err := GetAllocation(allocationID)
+	alloc, err := GetAllocationForUpdate(allocationID)
 	if err != nil {
 		return "", 0, allocationNotFound
 	}
