@@ -46,10 +46,10 @@ func InitClientConfig(c *Config) {
 		if cfg.SharderConsensous < 1 {
 			cfg.SharderConsensous = DefaultSharderConsensous
 		}
-		if cfg.MaxTxnQuery <= 0 {
+		if cfg.MaxTxnQuery < 1 {
 			cfg.MaxTxnQuery = DefaultMaxTxnQuery
 		}
-		if cfg.MinSubmit <= 0 {
+		if cfg.MinSubmit < 1 {
 			cfg.MinSubmit = DefaultMinSubmit
 		}
 	})
