@@ -2,6 +2,7 @@
 package transaction
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/0chain/gosdk/core/client"
@@ -259,14 +260,19 @@ func SendTransactionSync(txn *Transaction, miners []string) error {
 
 		go func(url string) {
 			defer wg.Done()
-			_, err := sendTransactionToURL(requestTimeout, url, txn)
+
+			// Create a context with a 30-second timeout for each request
+			ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+			defer cancel()
+
+			_, err := sendTransactionToURL(ctx, url, txn)
 			if err != nil {
 				fails <- err
 			}
 		}(minerURL)
 	}
 
-	// Wait for all requests to finish
+	// Close the channel when all requests are finished
 	go func() {
 		wg.Wait()
 		close(fails)
@@ -299,15 +305,16 @@ func SendTransactionSync(txn *Transaction, miners []string) error {
 	return nil
 }
 
-func sendTransactionToURL(timeout time.Duration, url string, txn *Transaction) ([]byte, error) {
-	// Create a new request with the provided context
+func sendTransactionToURL(ctx context.Context, url string, txn *Transaction) ([]byte, error) {
+	// Create a new HTTP POST request with context
 	postReq, err := util.NewHTTPPostRequest(url, txn)
 	if err != nil {
 		return nil, fmt.Errorf("error creating HTTP request: %w", err)
 	}
 
-	// Set the request to be executed with the provided context (handling timeouts)
-	postResponse, err := postReq.PostWithTimeout(timeout)
+	// Use the provided context in the request's Post method
+	postReq.Ctx = ctx
+	postResponse, err := postReq.Post()
 	if err != nil {
 		return nil, fmt.Errorf("submit transaction failed: %w", err)
 	}
