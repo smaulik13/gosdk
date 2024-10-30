@@ -602,7 +602,7 @@ func SmartContractTxnValueFee(scAddress string, sn SmartContractTxnData,
 
 		if t == nil {
 			return "", "", 0, txn, errors.New("transaction_validation_failed",
-				"Failed to get the transaction confirmation")
+				"Failed to get the transaction confirmation : "+txn.Hash)
 		}
 
 		if t.Status == TxnFail {
