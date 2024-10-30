@@ -462,7 +462,11 @@ func (a *Allocation) generateAndSetOwnerSigningPublicKey() {
 			l.Logger.Error("Failed to update owner signing public key", zap.Error(err))
 			return
 		}
-		l.Logger.Info("Owner signing public key updated with transaction : ", zap.String("hash", hash))
+		l.Logger.Info("Owner signing public key updated with transaction : ", hash, " ownerSigningPublicKey : ", a.OwnerSigningPublicKey)
+		a.Tx = hash
+	} else {
+		pubKey := privateSigningKey.Public().(ed25519.PublicKey)
+		l.Logger.Info("Owner signing public key already exists: ", a.OwnerSigningPublicKey, " generated: ", hex.EncodeToString(pubKey))
 	}
 	a.privateSigningKey = privateSigningKey
 }
