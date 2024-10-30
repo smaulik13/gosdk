@@ -42,16 +42,16 @@ func GetClientConfig() (*Config, error) {
 // InitClientConfig set global client config
 func InitClientConfig(c *Config) {
 	onceCfg.Do(func() {
-		if c.SharderConsensous < 1 {
+		cfg = c
+		if cfg.SharderConsensous < 1 {
 			cfg.SharderConsensous = DefaultSharderConsensous
 		}
-		if c.MaxTxnQuery <= 0 {
-			c.MaxTxnQuery = DefaultMaxTxnQuery
+		if cfg.MaxTxnQuery <= 0 {
+			cfg.MaxTxnQuery = DefaultMaxTxnQuery
 		}
-		if c.MinSubmit <= 0 {
-			c.MinSubmit = DefaultMinSubmit
+		if cfg.MinSubmit <= 0 {
+			cfg.MinSubmit = DefaultMinSubmit
 		}
-		cfg = c
 	})
 }
 
