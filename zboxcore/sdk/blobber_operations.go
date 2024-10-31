@@ -55,12 +55,15 @@ func CreateAllocationForOwner(
 		return "", 0, nil, sdkNotInitialized
 	}
 
-	privateSigningKey, err := generateOwnerSigningKey(ownerpublickey, owner)
-	if err != nil {
-		return "", 0, nil, errors.New("failed_generate_owner_signing_key", "failed to generate owner signing key: "+err.Error())
+	if client.PublicKey() == ownerpublickey {
+		privateSigningKey, err := generateOwnerSigningKey(ownerpublickey, owner)
+		if err != nil {
+			return "", 0, nil, errors.New("failed_generate_owner_signing_key", "failed to generate owner signing key: "+err.Error())
+		}
+		pub := privateSigningKey.Public().(ed25519.PublicKey)
+		pk := hex.EncodeToString(pub)
+		allocationRequest["owner_signing_public_key"] = pk
 	}
-	pub := privateSigningKey.Public().(ed25519.PublicKey)
-	pk := hex.EncodeToString(pub)
 
 	allocationRequest["owner_id"] = owner
 	allocationRequest["owner_public_key"] = ownerpublickey
@@ -68,7 +71,6 @@ func CreateAllocationForOwner(
 	allocationRequest["file_options_changed"], allocationRequest["file_options"] = calculateAllocationFileOptions(63 /*0011 1111*/, fileOptionsParams)
 	allocationRequest["is_enterprise"] = IsEnterprise
 	allocationRequest["storage_version"] = StorageV2
-	allocationRequest["owner_signing_public_key"] = pk
 
 	var sn = transaction.SmartContractTxnData{
 		Name:      transaction.NEW_ALLOCATION_REQUEST,
