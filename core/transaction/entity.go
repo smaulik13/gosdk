@@ -5,15 +5,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"strings"
+	"sync"
+	"time"
+
 	"github.com/0chain/gosdk/core/client"
 	"github.com/0chain/gosdk/core/conf"
 	"github.com/0chain/gosdk/core/logger"
 	"github.com/0chain/gosdk/core/sys"
 	"go.uber.org/zap"
-	"net/http"
-	"strings"
-	"sync"
-	"time"
 
 	"github.com/0chain/errors"
 	"github.com/0chain/gosdk/core/common"
@@ -199,11 +200,6 @@ func (t *Transaction) ComputeHashAndSignWithWallet(signHandler SignWithWallet, s
 }
 
 func (t *Transaction) getAuthorize() (string, error) {
-	err := t.ComputeHashAndSign(client.Sign)
-	if err != nil {
-		return "", errors.Wrap(err, "signing error.")
-	}
-
 	jsonByte, err := json.Marshal(t)
 	if err != nil {
 		return "", err
@@ -212,19 +208,21 @@ func (t *Transaction) getAuthorize() (string, error) {
 	if sys.Authorize == nil {
 		return "", errors.New("not_initialized", "no authorize func is set, define it in native code and set in sys")
 	}
+
 	authorize, err := sys.Authorize(string(jsonByte))
 	if err != nil {
 		return "", err
 	}
 
-	// Verify the split key signed signature
 	ok, err := t.VerifySigWith(client.PublicKey(), sys.VerifyWith)
 	if err != nil {
 		return "", errors.New("", "verification failed for auth response")
 	}
+
 	if !ok {
 		return "", errors.New("", "verification failed for auth response")
 	}
+
 	return authorize, nil
 }
 
@@ -591,9 +589,16 @@ func SmartContractTxnValueFee(scAddress string, sn SmartContractTxnData,
 		txn.TransactionNonce = client.Cache.GetNextNonce(txn.ClientID)
 	}
 
-	txn.Signature, err = txn.getAuthorize()
+	err = txn.ComputeHashAndSign(client.Sign)
 	if err != nil {
 		return
+	}
+
+	if client.GetClient().IsSplit {
+		txn.Signature, err = txn.getAuthorize()
+		if err != nil {
+			return
+		}
 	}
 
 	msg := fmt.Sprintf("executing transaction '%s' with hash %s ", sn.Name, txn.Hash)
