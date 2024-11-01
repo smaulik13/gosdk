@@ -300,7 +300,7 @@ func SendTransactionSync(txn *Transaction, miners []string) error {
 	}
 
 	if failureCount == len(miners) {
-		return fmt.Errorf("all miners failed: %s", dominantErr)
+		return fmt.Errorf(dominantErr)
 	}
 	return nil
 }
