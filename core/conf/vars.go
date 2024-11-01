@@ -49,6 +49,9 @@ func InitClientConfig(c *Config) {
 		if cfg.MaxTxnQuery < 1 {
 			cfg.MaxTxnQuery = DefaultMaxTxnQuery
 		}
+		if cfg.QuerySleepTime < 1 {
+			cfg.QuerySleepTime = DefaultQuerySleepTime
+		}
 		if cfg.MinSubmit < 1 {
 			cfg.MinSubmit = DefaultMinSubmit
 		}
