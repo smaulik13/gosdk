@@ -198,6 +198,36 @@ func (t *Transaction) ComputeHashAndSignWithWallet(signHandler SignWithWallet, s
 	return nil
 }
 
+func (t *Transaction) getAuthorize() (string, error) {
+	err := t.ComputeHashAndSign(client.Sign)
+	if err != nil {
+		return "", errors.Wrap(err, "signing error.")
+	}
+
+	jsonByte, err := json.Marshal(t)
+	if err != nil {
+		return "", err
+	}
+
+	if sys.Authorize == nil {
+		return "", errors.New("not_initialized", "no authorize func is set, define it in native code and set in sys")
+	}
+	authorize, err := sys.Authorize(string(jsonByte))
+	if err != nil {
+		return "", err
+	}
+
+	// Verify the split key signed signature
+	ok, err := t.VerifySigWith(client.PublicKey(), sys.VerifyWith)
+	if err != nil {
+		return "", errors.New("", "verification failed for auth response")
+	}
+	if !ok {
+		return "", errors.New("", "verification failed for auth response")
+	}
+	return authorize, nil
+}
+
 func (t *Transaction) ComputeHashAndSign(signHandler SignFunc) error {
 	t.ComputeHashData()
 	var err error
@@ -561,7 +591,8 @@ func SmartContractTxnValueFee(scAddress string, sn SmartContractTxnData,
 		txn.TransactionNonce = client.Cache.GetNextNonce(txn.ClientID)
 	}
 
-	if err = txn.ComputeHashAndSign(client.Sign); err != nil {
+	txn.Signature, err = txn.getAuthorize()
+	if err != nil {
 		return
 	}
 
