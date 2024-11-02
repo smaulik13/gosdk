@@ -84,35 +84,34 @@ func main() {
 						return "", fmt.Errorf("failed to sign with split key: %v", err)
 					}
 
-					return sig, nil
-					// data, err := json.Marshal(zcncore.AuthMessage{
-					// 	Hash:      hash,
-					// 	Signature: sig,
-					// 	ClientID:  client.Wallet().ClientID,
-					// })
-					// if err != nil {
-					// 	return "", err
-					// }
+					data, err := json.Marshal(zcncore.AuthMessage{
+						Hash:      hash,
+						Signature: sig,
+						ClientID:  client.Wallet().ClientID,
+					})
+					if err != nil {
+						return "", err
+					}
 
-					// if sys.AuthCommon == nil {
-					// 	return "", errors.New("authCommon is not set")
-					// }
+					if sys.AuthCommon == nil {
+						return "", errors.New("authCommon is not set")
+					}
 
-					// rsp, err := sys.AuthCommon(string(data))
-					// if err != nil {
-					// 	return "", err
-					// }
+					rsp, err := sys.AuthCommon(string(data))
+					if err != nil {
+						return "", err
+					}
 
-					// var sigpk struct {
-					// 	Sig string `json:"sig"`
-					// }
+					var sigpk struct {
+						Sig string `json:"sig"`
+					}
 
-					// err = json.Unmarshal([]byte(rsp), &sigpk)
-					// if err != nil {
-					// 	return "", err
-					// }
+					err = json.Unmarshal([]byte(rsp), &sigpk)
+					if err != nil {
+						return "", err
+					}
 
-					// return sigpk.Sig, nil
+					return sigpk.Sig, nil
 				}
 			} else {
 				PrintError("__zcn_wasm__.jsProxy.sign is not installed yet")
@@ -363,7 +362,6 @@ func main() {
 				}
 				//update sign with js sign
 				zcncrypto.Sign = signFunc
-				zcncore.SignFn = signFunc
 				sys.Sign = func(hash, signatureScheme string, keys []sys.KeyPair) (string, error) {
 					// js already has signatureScheme and keys
 					return signFunc(hash)

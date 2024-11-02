@@ -164,7 +164,7 @@ const (
 	FEES_TABLE                = `/v1/fees_table`
 )
 
-type SignFunc = func(msg string, clientId ...string) (string, error)
+type SignFunc = func(msg string) (string, error)
 type VerifyFunc = func(publicKey, signature, msgHash string) (bool, error)
 type SignWithWallet = func(msg string, wallet interface{}) (string, error)
 
@@ -593,7 +593,7 @@ func SmartContractTxnValueFee(scAddress string, sn SmartContractTxnData,
 		txn.TransactionNonce = client.Cache.GetNextNonce(txn.ClientID)
 	}
 
-	err = txn.ComputeHashAndSign(client.Sign)
+	err = txn.ComputeHashAndSign(client.SignFn)
 	if err != nil {
 		return
 	}

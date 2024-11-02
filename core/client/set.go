@@ -70,6 +70,17 @@ func init() {
 	sys.VerifyEd25519With = verifyEd25519With
 }
 
+var SignFn = func(hash string) (string, error) {
+	ss := zcncrypto.NewSignatureScheme(client.signatureScheme)
+
+	err := ss.SetPrivateKey(client.wallet.Keys[0].PrivateKey)
+	if err != nil {
+		return "", err
+	}
+
+	return ss.Sign(hash)
+}
+
 func signHash(hash string, signatureScheme string, keys []sys.KeyPair) (string, error) {
 	retSignature := ""
 	for _, kv := range keys {
