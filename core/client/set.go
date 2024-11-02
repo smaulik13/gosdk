@@ -51,11 +51,7 @@ func init() {
 		}
 
 		if !wallet.IsSplit {
-			s, _ := sys.Sign(hash, client.signatureScheme, GetClientSysKeys(clients...))
-
-			fmt.Println(s, "RESULT BROKEN WITHOUT SPLIT KEY")
-
-			return s, nil
+			return sys.Sign(hash, client.signatureScheme, GetClientSysKeys(clients...))
 		}
 
 		// get sign lock
@@ -63,7 +59,7 @@ func init() {
 		fmt.Println("Sign: with sys.SignWithAuth:", sys.SignWithAuth, "sysKeys:", GetClientSysKeys(clients...))
 		sig, err := sys.SignWithAuth(hash, client.signatureScheme, GetClientSysKeys(clients...))
 
-		fmt.Println(sig, "RESULT BROKEN")
+		fmt.Println(sig, GetClientSysKeys(clients...), "RESULT BROKEN")
 
 		sigC <- struct{}{}
 		return sig, err
