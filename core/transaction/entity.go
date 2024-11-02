@@ -214,15 +214,6 @@ func (t *Transaction) getAuthorize() (string, error) {
 		return "", err
 	}
 
-	ok, err := t.VerifySigWith(client.PublicKey(), sys.VerifyWith)
-	if err != nil {
-		return "", errors.New("", "verification failed for auth response")
-	}
-
-	if !ok {
-		return "", errors.New("", "verification failed for auth response")
-	}
-
 	return authorize, nil
 }
 
@@ -603,6 +594,16 @@ func SmartContractTxnValueFee(scAddress string, sn SmartContractTxnData,
 		if err != nil {
 			return
 		}
+	}
+
+	ok, err := txn.VerifySigWith(client.PublicKey(), sys.VerifyWith)
+	if err != nil {
+		return
+	}
+
+	if !ok {
+		err = errors.New("", "verification failed for auth response")
+		return
 	}
 
 	msg := fmt.Sprintf("executing transaction '%s' with hash %s ", sn.Name, txn.Hash)
