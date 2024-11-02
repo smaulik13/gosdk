@@ -599,8 +599,6 @@ func SmartContractTxnValueFee(scAddress string, sn SmartContractTxnData,
 	}
 
 	if client.GetClient().IsSplit {
-		fmt.Println(txn.Signature, "RESULT GENERATED")
-
 		txn.Signature, err = txn.getAuthorize()
 		if err != nil {
 			return

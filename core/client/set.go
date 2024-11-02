@@ -58,9 +58,6 @@ func init() {
 		<-sigC
 		fmt.Println("Sign: with sys.SignWithAuth:", sys.SignWithAuth, "sysKeys:", GetClientSysKeys(clients...))
 		sig, err := sys.SignWithAuth(hash, client.signatureScheme, GetClientSysKeys(clients...))
-
-		fmt.Println(sig, GetClientSysKeys(clients...), "RESULT BROKEN")
-
 		sigC <- struct{}{}
 		return sig, err
 	}
@@ -86,8 +83,6 @@ func signHash(hash string, signatureScheme string, keys []sys.KeyPair) (string, 
 	for _, kv := range keys {
 		ss := zcncrypto.NewSignatureScheme(signatureScheme)
 
-		fmt.Println(kv.PrivateKey, hash, "PRIVATE KEY")
-
 		err := ss.SetPrivateKey(kv.PrivateKey)
 		if err != nil {
 			return "", err
@@ -102,8 +97,6 @@ func signHash(hash string, signatureScheme string, keys []sys.KeyPair) (string, 
 			return "", err
 		}
 	}
-
-	fmt.Println(hash, "RESULT PRIVATE KEY")
 
 	return retSignature, nil
 }
@@ -145,15 +138,11 @@ func GetClientSysKeys(clients ...string) []sys.KeyPair {
 
 	var keys []sys.KeyPair
 	for _, kv := range wallet.Keys {
-		fmt.Println(kv.PrivateKey, kv.PublicKey, "GET CLIENT SYS KEYS")
-
 		keys = append(keys, sys.KeyPair{
 			PrivateKey: kv.PrivateKey,
 			PublicKey:  kv.PublicKey,
 		})
 	}
-
-	fmt.Println(keys, len(keys), "SIZE")
 
 	return keys
 }
