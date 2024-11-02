@@ -50,14 +50,21 @@ func init() {
 			wallet = client.wallets[clients[0]]
 		}
 
-		if wallet.PeerPublicKey == "" {
-			return sys.Sign(hash, client.signatureScheme, GetClientSysKeys(clients...))
+		if !wallet.IsSplit {
+			s, _ := sys.Sign(hash, client.signatureScheme, GetClientSysKeys(clients...))
+
+			fmt.Println(s, "RESULT BROKEN WITHOUT SPLIT KEY")
+
+			return s, nil
 		}
 
 		// get sign lock
 		<-sigC
 		fmt.Println("Sign: with sys.SignWithAuth:", sys.SignWithAuth, "sysKeys:", GetClientSysKeys(clients...))
 		sig, err := sys.SignWithAuth(hash, client.signatureScheme, GetClientSysKeys(clients...))
+
+		fmt.Println(sig, "RESULT BROKEN")
+
 		sigC <- struct{}{}
 		return sig, err
 	}
@@ -125,11 +132,16 @@ func GetClientSysKeys(clients ...string) []sys.KeyPair {
 
 	var keys []sys.KeyPair
 	for _, kv := range wallet.Keys {
+		fmt.Println(kv.PrivateKey, kv.PublicKey, "GET CLIENT SYS KEYS")
+
 		keys = append(keys, sys.KeyPair{
 			PrivateKey: kv.PrivateKey,
 			PublicKey:  kv.PublicKey,
 		})
 	}
+
+	fmt.Println(keys, len(keys), "SIZE")
+
 	return keys
 }
 
