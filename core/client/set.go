@@ -74,6 +74,9 @@ func signHash(hash string, signatureScheme string, keys []sys.KeyPair) (string, 
 	retSignature := ""
 	for _, kv := range keys {
 		ss := zcncrypto.NewSignatureScheme(signatureScheme)
+
+		fmt.Println(kv.PrivateKey, hash, "PRIVATE KEY")
+
 		err := ss.SetPrivateKey(kv.PrivateKey)
 		if err != nil {
 			return "", err
@@ -88,6 +91,9 @@ func signHash(hash string, signatureScheme string, keys []sys.KeyPair) (string, 
 			return "", err
 		}
 	}
+
+	fmt.Println(hash, "RESULT PRIVATE KEY")
+
 	return retSignature, nil
 }
 
