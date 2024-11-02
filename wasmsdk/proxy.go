@@ -59,6 +59,9 @@ func main() {
 					if c == nil || len(c.Keys) == 0 {
 						return "", errors.New("no keys found")
 					}
+
+					fmt.Println(c, "CLIENT")
+
 					pk := c.Keys[0].PrivateKey
 					result, err := jsbridge.Await(jsSign.Invoke(hash, pk))
 
@@ -349,6 +352,9 @@ func main() {
 					if c == nil || len(c.Keys) == 0 {
 						return "", errors.New("no keys found")
 					}
+
+					fmt.Println(c, "CLIENT")
+
 					pk := c.Keys[0].PrivateKey
 					result, err := jsbridge.Await(jsSign.Invoke(hash, pk))
 
