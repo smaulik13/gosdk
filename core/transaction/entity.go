@@ -600,6 +600,8 @@ func SmartContractTxnValueFee(scAddress string, sn SmartContractTxnData,
 
 	// try client.PublicKey(clientId)
 
+	fmt.Println(txn.PublicKey, txn.Signature, txn.Hash, client.PublicKey(clientId), "SETOF")
+
 	ok, err := txn.VerifySigWith(txn.PublicKey, sys.VerifyWith)
 	if err != nil {
 		err = errors.New("", "verification failed for auth response")
