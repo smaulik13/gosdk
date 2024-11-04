@@ -1218,6 +1218,36 @@ func ResetBlobberStats(rbs *ResetBlobberStatsDto) (string, int64, error) {
 	return hash, n, err
 }
 
+type StorageNodeIdField struct {
+	Id string `json:"id"`
+}
+
+func ResetBlobberVersion(snId *StorageNodeIdField) (string, int64, error) {
+	if !client.IsSDKInitialized() {
+		return "", 0, sdkNotInitialized
+	}
+
+	var sn = transaction.SmartContractTxnData{
+		Name:      transaction.STORAGESC_RESET_BLOBBER_VERSION,
+		InputArgs: snId,
+	}
+	hash, _, n, _, err := storageSmartContractTxn(sn)
+	return hash, n, err
+}
+
+func InsertKilledProviderID(snId *StorageNodeIdField) (string, int64, error) {
+	if !client.IsSDKInitialized() {
+		return "", 0, sdkNotInitialized
+	}
+
+	var sn = transaction.SmartContractTxnData{
+		Name:      transaction.STORAGESC_INSERT_KILLED_PROVIDER_ID,
+		InputArgs: snId,
+	}
+	hash, _, n, _, err := storageSmartContractTxn(sn)
+	return hash, n, err
+}
+
 func ResetAllocationStats(allocationId string) (string, int64, error) {
 	if !client.IsSDKInitialized() {
 		return "", 0, sdkNotInitialized
