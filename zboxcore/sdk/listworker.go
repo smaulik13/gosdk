@@ -38,6 +38,7 @@ type ListRequest struct {
 	offset             int
 	pageLimit          int
 	storageVersion     int
+	dataShards         int
 	Consensus
 }
 
@@ -69,11 +70,12 @@ type ListResult struct {
 	ActualThumbnailHash string `json:"actual_thumbnail_hash"`
 	ActualThumbnailSize int64  `json:"actual_thumbnail_size"`
 
-	CreatedAt  common.Timestamp `json:"created_at"`
-	UpdatedAt  common.Timestamp `json:"updated_at"`
-	Children   []*ListResult    `json:"list"`
-	Consensus  `json:"-"`
-	deleteMask zboxutil.Uint128 `json:"-"`
+	CreatedAt      common.Timestamp `json:"created_at"`
+	UpdatedAt      common.Timestamp `json:"updated_at"`
+	Children       []*ListResult    `json:"list"`
+	StorageVersion int              `json:"storage_version"`
+	Consensus      `json:"-"`
+	deleteMask     zboxutil.Uint128 `json:"-"`
 }
 
 type ListRequestOptions func(req *ListRequest)
@@ -233,8 +235,9 @@ func (req *ListRequest) GetListFromBlobbers() (*ListResult, error) {
 		return nil, err
 	}
 	result := &ListResult{
-		ClientId:   req.ClientId,
-		deleteMask: zboxutil.NewUint128(1).Lsh(uint64(len(req.blobbers))).Sub64(1),
+		ClientId:       req.ClientId,
+		deleteMask:     zboxutil.NewUint128(1).Lsh(uint64(len(req.blobbers))).Sub64(1),
+		StorageVersion: req.storageVersion,
 	}
 	selected := make(map[string]*ListResult)
 	childResultMap := make(map[string]*ListResult)
@@ -269,7 +272,9 @@ func (req *ListRequest) GetListFromBlobbers() (*ListResult, error) {
 		}
 		result.Size += ti.ref.Size
 		result.NumBlocks += ti.ref.NumBlocks
-
+		if ti.ref.Path == "/" && result.ActualSize == 0 {
+			result.ActualSize = ti.ref.Size * int64(req.dataShards)
+		}
 		if len(lR[i].ref.Children) > 0 {
 			result.populateChildren(lR[i].ref.Children, childResultMap, selected, req)
 		}
@@ -313,7 +318,8 @@ func (lr *ListResult) populateChildren(children []fileref.RefEntity, childResult
 					consensus:       0,
 					fullconsensus:   req.fullconsensus,
 				},
-				LookupHash: child.GetLookupHash(),
+				LookupHash:     child.GetLookupHash(),
+				StorageVersion: req.storageVersion,
 			}
 			childResultMap[actualHash] = childResult
 		}
