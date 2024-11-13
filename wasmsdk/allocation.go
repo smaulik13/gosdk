@@ -68,7 +68,7 @@ func getAllocationBlobbers(preferredBlobberURLs []string,
 		return sdk.GetBlobberIds(preferredBlobberURLs)
 	}
 
-	return sdk.GetAllocationBlobbers(dataShards, parityShards, size, isRestricted, sdk.PriceRange{
+	return sdk.GetAllocationBlobbers(sdk.StorageV2, dataShards, parityShards, size, isRestricted, sdk.PriceRange{
 		Min: uint64(minReadPrice),
 		Max: uint64(maxReadPrice),
 	}, sdk.PriceRange{
@@ -108,6 +108,7 @@ func createAllocation(datashards, parityshards int, size int64,
 		BlobberIds:           blobberIds,
 		ThirdPartyExtendable: setThirdPartyExtendable,
 		IsEnterprise:         IsEnterprise,
+		StorageVersion:       sdk.StorageV2,
 		BlobberAuthTickets:   blobberAuthTickets,
 		Force:                force,
 	}
@@ -167,7 +168,8 @@ func UpdateForbidAllocation(allocationID string, forbidupload, forbiddelete, for
 		"",           //addBlobberId,
 		"",           //addBlobberAuthTicket
 		"",           //removeBlobberId,
-		false,        //thirdPartyExtendable,
+		"",           //thirdPartyExtendable,
+		false,        // ownerSigninPublicKey
 		&sdk.FileOptionsParameters{
 			ForbidUpload: sdk.FileOptionParam{Changed: forbidupload, Value: forbidupload},
 			ForbidDelete: sdk.FileOptionParam{Changed: forbiddelete, Value: forbiddelete},
@@ -195,7 +197,8 @@ func freezeAllocation(allocationID string) (string, error) {
 		"",           //addBlobberId,
 		"",           //addBlobberAuthTicket
 		"",           //removeBlobberId,
-		false,        //thirdPartyExtendable,
+		"",           //thirdPartyExtendable,
+		false,        // ownerSigninPublicKey
 		&sdk.FileOptionsParameters{
 			ForbidUpload: sdk.FileOptionParam{Changed: true, Value: true},
 			ForbidDelete: sdk.FileOptionParam{Changed: true, Value: true},
@@ -241,7 +244,7 @@ func updateAllocationWithRepair(allocationID string,
 	size int64,
 	extend bool,
 	lock int64,
-	addBlobberId, addBlobberAuthTicket, removeBlobberId, callbackFuncName string) (string, error) {
+	addBlobberId, addBlobberAuthTicket, removeBlobberId, ownerSigninPublicKey, callbackFuncName string) (string, error) {
 	sdk.SetWasm()
 	allocationObj, err := sdk.GetAllocation(allocationID)
 	if err != nil {
@@ -258,7 +261,7 @@ func updateAllocationWithRepair(allocationID string,
 		}
 	}
 
-	alloc, hash, isRepairRequired, err := allocationObj.UpdateWithStatus(size, extend, uint64(lock), addBlobberId, addBlobberAuthTicket, removeBlobberId, false, &sdk.FileOptionsParameters{}, statusBar)
+	alloc, hash, isRepairRequired, err := allocationObj.UpdateWithStatus(size, extend, uint64(lock), addBlobberId, addBlobberAuthTicket, removeBlobberId, ownerSigninPublicKey, false, &sdk.FileOptionsParameters{}, statusBar)
 	if err != nil {
 		return hash, err
 	}
@@ -294,8 +297,8 @@ func updateAllocationWithRepair(allocationID string,
 func updateAllocation(allocationID string,
 	size int64, extend bool,
 	lock int64,
-	addBlobberId, addBlobberAuthTicket, removeBlobberId string, setThirdPartyExtendable bool) (string, error) {
-	hash, _, err := sdk.UpdateAllocation(size, extend, allocationID, uint64(lock), addBlobberId, addBlobberAuthTicket, removeBlobberId, setThirdPartyExtendable, &sdk.FileOptionsParameters{})
+	addBlobberId, addBlobberAuthTicket, removeBlobberId, ownerSigninPublicKey string, setThirdPartyExtendable bool) (string, error) {
+	hash, _, err := sdk.UpdateAllocation(size, extend, allocationID, uint64(lock), addBlobberId, addBlobberAuthTicket, removeBlobberId, ownerSigninPublicKey, setThirdPartyExtendable, &sdk.FileOptionsParameters{})
 
 	if err == nil {
 		clearAllocation(allocationID)
@@ -394,21 +397,6 @@ func lockStakePool(providerType, tokens, fee uint64, providerID string) (string,
 	return hash, err
 }
 
-// unlockWritePool unlocks the read pool
-//   - tokens: amount of tokens to lock (in SAS)
-//   - fee: transaction fees (in SAS)
-func lockReadPool(tokens, fee uint64) (string, error) {
-	hash, _, err := sdk.ReadPoolLock(tokens, fee)
-	return hash, err
-}
-
-// unLockWritePool unlocks the write pool
-//   - fee: transaction fees (in SAS)
-func unLockReadPool(fee uint64) (string, error) {
-	hash, _, err := sdk.ReadPoolUnlock(fee)
-	return hash, err
-}
-
 // unlockWritePool unlocks the write pool
 //   - providerType: provider type (1: miner, 2:sharder, 3:blobber, 4:validator, 5:authorizer)
 //   - fee: transaction fees (in SAS)
@@ -434,17 +422,6 @@ func getSkatePoolInfo(providerType int, providerID string) (*sdk.StakePoolInfo, 
 		return nil, err
 	}
 	return info, err
-}
-
-// getReadPoolInfo is to get information about the read pool for the allocation
-//   - clientID: client id
-func getReadPoolInfo(clientID string) (*sdk.ReadPool, error) {
-	readPool, err := sdk.GetReadPoolInfo(clientID)
-	if err != nil {
-		return nil, err
-	}
-
-	return readPool, nil
 }
 
 // getAllocationWith retrieves the information of a free or a shared allocation object given the auth ticket.

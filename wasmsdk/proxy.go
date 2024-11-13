@@ -13,11 +13,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/0chain/gosdk/core/client"
 	"github.com/0chain/gosdk/core/sys"
 	"github.com/0chain/gosdk/core/version"
 	"github.com/0chain/gosdk/core/zcncrypto"
 	"github.com/0chain/gosdk/wasmsdk/jsbridge"
-	"github.com/0chain/gosdk/zboxcore/client"
 	"github.com/0chain/gosdk/zboxcore/sdk"
 	"github.com/0chain/gosdk/zcncore"
 
@@ -59,18 +59,20 @@ func main() {
 					if c == nil || len(c.Keys) == 0 {
 						return "", errors.New("no keys found")
 					}
+
 					pk := c.Keys[0].PrivateKey
 					result, err := jsbridge.Await(jsSign.Invoke(hash, pk))
 
 					if len(err) > 0 && !err[0].IsNull() {
 						return "", errors.New("sign: " + err[0].String())
 					}
+
 					return result[0].String(), nil
 				}
 
 				//update sign with js sign
 				zcncrypto.Sign = signFunc
-				zcncore.SignFn = signFunc
+				client.SignFn = signFunc
 				sys.Sign = func(hash, signatureScheme string, keys []sys.KeyPair) (string, error) {
 					// js already has signatureScheme and keys
 					return signFunc(hash)
@@ -82,14 +84,10 @@ func main() {
 						return "", fmt.Errorf("failed to sign with split key: %v", err)
 					}
 
-					data, err := json.Marshal(struct {
-						Hash      string `json:"hash"`
-						Signature string `json:"signature"`
-						ClientID  string `json:"client_id"`
-					}{
+					data, err := json.Marshal(zcncore.AuthMessage{
 						Hash:      hash,
 						Signature: sig,
-						ClientID:  client.GetClient().ClientID,
+						ClientID:  client.Wallet().ClientID,
 					})
 					if err != nil {
 						return "", err
@@ -207,6 +205,7 @@ func main() {
 				//sdk
 				"init":                   initSDKs,
 				"setWallet":              setWallet,
+				"setWalletMode":          setWalletMode,
 				"getPublicEncryptionKey": zcncore.GetPublicEncryptionKey,
 				"hideLogs":               hideLogs,
 				"showLogs":               showLogs,
@@ -271,12 +270,6 @@ func main() {
 				"getAllocationWith":          getAllocationWith,
 				"createfreeallocation":       createfreeallocation,
 
-				// readpool
-				"getReadPoolInfo": getReadPoolInfo,
-				"lockReadPool":    lockReadPool,
-				"unLockReadPool":  unLockReadPool,
-				"createReadPool":  createReadPool,
-
 				// claim rewards
 				"collectRewards": collectRewards,
 
@@ -291,10 +284,6 @@ func main() {
 				"decodeAuthTicket": decodeAuthTicket,
 				"allocationRepair": allocationRepair,
 				"repairSize":       repairSize,
-
-				//smartcontract
-				"executeSmartContract": executeSmartContract,
-				"faucet":               faucet,
 
 				// bridge
 				"initBridge":                    initBridge,
@@ -327,9 +316,12 @@ func main() {
 
 				// zauth
 				"registerZauthServer": registerZauthServer,
+				"zauthRetrieveKey":    zauthRetrieveKey,
 				// zvault
 				"zvaultNewWallet":             zvaultNewWallet,
 				"zvaultNewSplit":              zvaultNewSplit,
+				"zvaultRetrieveRestrictions":  zvaultRetrieveRestrictions,
+				"zvaultUpdateRestrictions":    zvaultUpdateRestrictions,
 				"zvaultStoreKey":              zvaultStoreKey,
 				"zvaultRetrieveKeys":          zvaultRetrieveKeys,
 				"zvaultRevokeKey":             zvaultRevokeKey,
@@ -360,6 +352,7 @@ func main() {
 					if c == nil || len(c.Keys) == 0 {
 						return "", errors.New("no keys found")
 					}
+
 					pk := c.Keys[0].PrivateKey
 					result, err := jsbridge.Await(jsSign.Invoke(hash, pk))
 
@@ -370,7 +363,7 @@ func main() {
 				}
 				//update sign with js sign
 				zcncrypto.Sign = signFunc
-				zcncore.SignFn = signFunc
+				client.SignFn = signFunc
 				sys.Sign = func(hash, signatureScheme string, keys []sys.KeyPair) (string, error) {
 					// js already has signatureScheme and keys
 					return signFunc(hash)
@@ -383,11 +376,7 @@ func main() {
 						return "", fmt.Errorf("failed to sign with split key: %v", err)
 					}
 
-					data, err := json.Marshal(struct {
-						Hash      string `json:"hash"`
-						Signature string `json:"signature"`
-						ClientID  string `json:"client_id"`
-					}{
+					data, err := json.Marshal(zcncore.AuthMessage{
 						Hash:      hash,
 						Signature: sig,
 						ClientID:  client.GetClient().ClientID,
@@ -480,8 +469,8 @@ func main() {
 
 		setWallet(clientID, clientKey, peerPublicKey, publicKey, privateKey, mnemonic, isSplit)
 		hideLogs()
-		debug.SetGCPercent(75)
-		debug.SetMemoryLimit(1 * 1024 * 1024 * 1024) //1GB
+		debug.SetGCPercent(40)
+		debug.SetMemoryLimit(300 * 1024 * 1024) //300MB
 		err = startListener(respChan)
 		if err != nil {
 			fmt.Println("Error starting listener", err)
@@ -490,8 +479,8 @@ func main() {
 	}
 
 	hideLogs()
-	debug.SetGCPercent(75)
-	debug.SetMemoryLimit(3.5 * 1024 * 1024 * 1024) //3.5 GB
+	debug.SetGCPercent(40)
+	debug.SetMemoryLimit(2.5 * 1024 * 1024 * 1024) //2.5 GB
 
 	<-make(chan bool)
 

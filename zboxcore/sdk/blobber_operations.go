@@ -1,16 +1,18 @@
-//go:build !mobile
-// +build !mobile
-
 package sdk
 
 import (
+	"crypto/ed25519"
+	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"math"
-	"strings"
 
 	"github.com/0chain/errors"
+	"github.com/0chain/gosdk/core/client"
+	"github.com/0chain/gosdk/core/encryption"
 	"github.com/0chain/gosdk/core/transaction"
-	"github.com/0chain/gosdk/zboxcore/client"
+	"github.com/0chain/gosdk/zboxcore/logger"
+	"go.uber.org/zap"
 )
 
 // CreateAllocationForOwner creates a new allocation with the given options (txn: `storagesc.new_allocation_request`).
@@ -44,13 +46,23 @@ func CreateAllocationForOwner(
 	}
 
 	allocationRequest, err := getNewAllocationBlobbers(
-		datashards, parityshards, size, readPrice, writePrice, preferredBlobberIds, blobberAuthTickets, force)
+		StorageV2, datashards, parityshards, size, readPrice, writePrice, preferredBlobberIds, blobberAuthTickets, force)
 	if err != nil {
 		return "", 0, nil, errors.New("failed_get_allocation_blobbers", "failed to get blobbers for allocation: "+err.Error())
 	}
 
-	if !sdkInitialized {
+	if !client.IsSDKInitialized() {
 		return "", 0, nil, sdkNotInitialized
+	}
+
+	if client.PublicKey() == ownerpublickey {
+		privateSigningKey, err := generateOwnerSigningKey(ownerpublickey, owner)
+		if err != nil {
+			return "", 0, nil, errors.New("failed_generate_owner_signing_key", "failed to generate owner signing key: "+err.Error())
+		}
+		pub := privateSigningKey.Public().(ed25519.PublicKey)
+		pk := hex.EncodeToString(pub)
+		allocationRequest["owner_signing_public_key"] = pk
 	}
 
 	allocationRequest["owner_id"] = owner
@@ -58,6 +70,7 @@ func CreateAllocationForOwner(
 	allocationRequest["third_party_extendable"] = thirdPartyExtendable
 	allocationRequest["file_options_changed"], allocationRequest["file_options"] = calculateAllocationFileOptions(63 /*0011 1111*/, fileOptionsParams)
 	allocationRequest["is_enterprise"] = IsEnterprise
+	allocationRequest["storage_version"] = StorageV2
 
 	var sn = transaction.SmartContractTxnData{
 		Name:      transaction.NEW_ALLOCATION_REQUEST,
@@ -73,11 +86,11 @@ func CreateAllocationForOwner(
 //
 // returns the hash of the transaction, the nonce of the transaction and an error if any.
 func CreateFreeAllocation(marker string, value uint64) (string, int64, error) {
-	if !sdkInitialized {
+	if !client.IsSDKInitialized() {
 		return "", 0, sdkNotInitialized
 	}
 
-	recipientPublicKey := client.GetClientPublicKey()
+	recipientPublicKey := client.PublicKey()
 
 	var input = map[string]interface{}{
 		"recipient_public_key": recipientPublicKey,
@@ -117,7 +130,7 @@ func UpdateAllocation(
 	extend bool,
 	allocationID string,
 	lock uint64,
-	addBlobberId, addBlobberAuthTicket, removeBlobberId string,
+	addBlobberId, addBlobberAuthTicket, removeBlobberId, ownerSigninPublicKey string,
 	setThirdPartyExtendable bool, fileOptionsParams *FileOptionsParameters,
 ) (hash string, nonce int64, err error) {
 
@@ -125,17 +138,17 @@ func UpdateAllocation(
 		return "", 0, errors.New("invalid_lock", "int64 overflow on lock value")
 	}
 
-	if !sdkInitialized {
+	if !client.IsSDKInitialized() {
 		return "", 0, sdkNotInitialized
 	}
 
-	alloc, err := GetAllocation(allocationID)
+	alloc, err := GetAllocationForUpdate(allocationID)
 	if err != nil {
 		return "", 0, allocationNotFound
 	}
 
 	updateAllocationRequest := make(map[string]interface{})
-	updateAllocationRequest["owner_id"] = client.GetClientID()
+	updateAllocationRequest["owner_id"] = client.Id()
 	updateAllocationRequest["owner_public_key"] = ""
 	updateAllocationRequest["id"] = allocationID
 	updateAllocationRequest["size"] = size
@@ -144,6 +157,7 @@ func UpdateAllocation(
 	updateAllocationRequest["add_blobber_auth_ticket"] = addBlobberAuthTicket
 	updateAllocationRequest["remove_blobber_id"] = removeBlobberId
 	updateAllocationRequest["set_third_party_extendable"] = setThirdPartyExtendable
+	updateAllocationRequest["owner_signing_public_key"] = ownerSigninPublicKey
 	updateAllocationRequest["file_options_changed"], updateAllocationRequest["file_options"] = calculateAllocationFileOptions(alloc.FileOptions, fileOptionsParams)
 
 	sn := transaction.SmartContractTxnData{
@@ -163,7 +177,7 @@ func UpdateAllocation(
 //   - value: value to lock
 //   - fee: transaction fee
 func StakePoolLock(providerType ProviderType, providerID string, value, fee uint64) (hash string, nonce int64, err error) {
-	if !sdkInitialized {
+	if !client.IsSDKInitialized() {
 		return "", 0, sdkNotInitialized
 	}
 
@@ -199,7 +213,7 @@ func StakePoolLock(providerType ProviderType, providerID string, value, fee uint
 		return "", 0, errors.Newf("stake_pool_lock", "unsupported provider type: %v", providerType)
 	}
 
-	hash, _, nonce, _, err = smartContractTxnValueFeeWithRetry(scAddress, sn, value, fee)
+	hash, _, nonce, _, err = transaction.SmartContractTxnValueFeeWithRetry(scAddress, sn, value, fee, true)
 	return
 }
 
@@ -213,7 +227,7 @@ func StakePoolLock(providerType ProviderType, providerID string, value, fee uint
 //   - providerID: provider ID
 //   - fee: transaction fee
 func StakePoolUnlock(providerType ProviderType, providerID string, fee uint64) (unstake int64, nonce int64, err error) {
-	if !sdkInitialized {
+	if !client.IsSDKInitialized() {
 		return 0, 0, sdkNotInitialized
 	}
 
@@ -250,7 +264,7 @@ func StakePoolUnlock(providerType ProviderType, providerID string, fee uint64) (
 	}
 
 	var out string
-	if _, out, nonce, _, err = smartContractTxnValueFeeWithRetry(scAddress, sn, 0, fee); err != nil {
+	if _, out, nonce, _, err = transaction.SmartContractTxnValueFeeWithRetry(scAddress, sn, 0, fee, true); err != nil {
 		return // an error
 	}
 
@@ -262,47 +276,12 @@ func StakePoolUnlock(providerType ProviderType, providerID string, fee uint64) (
 	return spuu.Amount, nonce, nil
 }
 
-// ReadPoolLock locks given number of tokes for given duration in read pool.
-//   - tokens: number of tokens to lock
-//   - fee: transaction fee
-func ReadPoolLock(tokens, fee uint64) (hash string, nonce int64, err error) {
-	if !sdkInitialized {
-		return "", 0, sdkNotInitialized
-	}
-
-	var sn = transaction.SmartContractTxnData{
-		Name:      transaction.STORAGESC_READ_POOL_LOCK,
-		InputArgs: nil,
-	}
-	hash, _, nonce, _, err = smartContractTxnValueFeeWithRetry(STORAGE_SCADDRESS, sn, tokens, fee)
-	return
-}
-
-// ReadPoolUnlock unlocks tokens in expired read pool
-//   - fee: transaction fee
-func ReadPoolUnlock(fee uint64) (hash string, nonce int64, err error) {
-	if !sdkInitialized {
-		return "", 0, sdkNotInitialized
-	}
-
-	var sn = transaction.SmartContractTxnData{
-		Name:      transaction.STORAGESC_READ_POOL_UNLOCK,
-		InputArgs: nil,
-	}
-	hash, _, nonce, _, err = smartContractTxnValueFeeWithRetry(STORAGE_SCADDRESS, sn, 0, fee)
-	return
-}
-
-//
-// write pool
-//
-
 // WritePoolLock locks given number of tokes for given duration in read pool.
 //   - allocID: allocation ID
 //   - tokens: number of tokens to lock
 //   - fee: transaction fee
 func WritePoolLock(allocID string, tokens, fee uint64) (hash string, nonce int64, err error) {
-	if !sdkInitialized {
+	if !client.IsSDKInitialized() {
 		return "", 0, sdkNotInitialized
 	}
 
@@ -318,7 +297,7 @@ func WritePoolLock(allocID string, tokens, fee uint64) (hash string, nonce int64
 		InputArgs: &req,
 	}
 
-	hash, _, nonce, _, err = smartContractTxnValueFeeWithRetry(STORAGE_SCADDRESS, sn, tokens, fee)
+	hash, _, nonce, _, err = transaction.SmartContractTxnValueFeeWithRetry(STORAGE_SCADDRESS, sn, tokens, fee, true)
 	return
 }
 
@@ -326,7 +305,7 @@ func WritePoolLock(allocID string, tokens, fee uint64) (hash string, nonce int64
 //   - allocID: allocation ID
 //   - fee: transaction fee
 func WritePoolUnlock(allocID string, fee uint64) (hash string, nonce int64, err error) {
-	if !sdkInitialized {
+	if !client.IsSDKInitialized() {
 		return "", 0, sdkNotInitialized
 	}
 
@@ -341,60 +320,22 @@ func WritePoolUnlock(allocID string, fee uint64) (hash string, nonce int64, err 
 		Name:      transaction.STORAGESC_WRITE_POOL_UNLOCK,
 		InputArgs: &req,
 	}
-	hash, _, nonce, _, err = smartContractTxnValueFeeWithRetry(STORAGE_SCADDRESS, sn, 0, fee)
+	hash, _, nonce, _, err = transaction.SmartContractTxnValueFeeWithRetry(STORAGE_SCADDRESS, sn, 0, fee, true)
 	return
 }
 
-func smartContractTxn(scAddress string, sn transaction.SmartContractTxnData) (
-	hash, out string, nonce int64, txn *transaction.Transaction, err error) {
-	return smartContractTxnValue(scAddress, sn, 0)
-}
-
-func StorageSmartContractTxn(sn transaction.SmartContractTxnData) (
-	hash, out string, nonce int64, txn *transaction.Transaction, err error) {
-
-	return storageSmartContractTxnValue(sn, 0)
-}
-
-func storageSmartContractTxn(sn transaction.SmartContractTxnData) (
-	hash, out string, nonce int64, txn *transaction.Transaction, err error) {
-
-	return storageSmartContractTxnValue(sn, 0)
-}
-
-func smartContractTxnValue(scAddress string, sn transaction.SmartContractTxnData, value uint64) (
-	hash, out string, nonce int64, txn *transaction.Transaction, err error) {
-
-	return smartContractTxnValueFeeWithRetry(scAddress, sn, value, client.TxnFee())
-}
-
-func storageSmartContractTxnValue(sn transaction.SmartContractTxnData, value uint64) (
-	hash, out string, nonce int64, txn *transaction.Transaction, err error) {
-
-	// Fee is set during sdk initialization.
-	return smartContractTxnValueFeeWithRetry(STORAGE_SCADDRESS, sn, value, client.TxnFee())
-}
-
-func smartContractTxnValueFeeWithRetry(scAddress string, sn transaction.SmartContractTxnData,
-	value, fee uint64) (hash, out string, nonce int64, t *transaction.Transaction, err error) {
-	hash, out, nonce, t, err = smartContractTxnValueFee(scAddress, sn, value, fee)
-
-	if err != nil && strings.Contains(err.Error(), "invalid transaction nonce") {
-		return smartContractTxnValueFee(scAddress, sn, value, fee)
+func generateOwnerSigningKey(ownerPublicKey, ownerID string) (ed25519.PrivateKey, error) {
+	if ownerPublicKey == "" {
+		return nil, errors.New("owner_public_key_required", "owner public key is required")
 	}
-	return
-}
-
-func smartContractTxnValueFee(scAddress string, sn transaction.SmartContractTxnData,
-	value, fee uint64) (hash, out string, nonce int64, t *transaction.Transaction, err error) {
-	t, err = ExecuteSmartContract(scAddress, sn, value, fee)
+	hashData := fmt.Sprintf("%s:%s", ownerPublicKey, "owner_signing_public_key")
+	sig, err := client.Sign(encryption.Hash(hashData), ownerID)
 	if err != nil {
-		if t != nil {
-			return "", "", t.TransactionNonce, nil, err
-		}
-
-		return "", "", 0, nil, err
+		logger.Logger.Error("error during sign", zap.Error(err))
+		return nil, err
 	}
-
-	return t.Hash, t.TransactionOutput, t.TransactionNonce, t, nil
+	//use this signature as entropy to generate ecdsa key pair
+	decodedSig, _ := hex.DecodeString(sig)
+	privateSigningKey := ed25519.NewKeyFromSeed(decodedSig[:32])
+	return privateSigningKey, nil
 }

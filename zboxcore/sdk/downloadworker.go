@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"hash"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -20,10 +19,11 @@ import (
 	"time"
 
 	"github.com/0chain/errors"
+	"github.com/0chain/gosdk/core/client"
 	"github.com/0chain/gosdk/core/common"
+	encrypt "github.com/0chain/gosdk/core/encryption"
 	"github.com/0chain/gosdk/core/sys"
 	"github.com/0chain/gosdk/zboxcore/blockchain"
-	"github.com/0chain/gosdk/zboxcore/client"
 	"github.com/0chain/gosdk/zboxcore/encryption"
 	"github.com/0chain/gosdk/zboxcore/fileref"
 	"github.com/0chain/gosdk/zboxcore/logger"
@@ -67,6 +67,7 @@ func WithFileCallback(cb func()) DownloadRequestOption {
 }
 
 type DownloadRequest struct {
+	ClientId           string
 	allocationID       string
 	allocationTx       string
 	sig                string
@@ -95,25 +96,27 @@ type DownloadRequest struct {
 	fileCallback       func()
 	contentMode        string
 	Consensus
-	effectiveBlockSize int // blocksize - encryptionOverHead
-	ecEncoder          reedsolomon.Encoder
-	maskMu             *sync.Mutex
-	encScheme          encryption.EncryptionScheme
-	shouldVerify       bool
-	blocksPerShard     int64
-	connectionID       string
-	skip               bool
-	freeRead           bool
-	fRef               *fileref.FileRef
-	chunksPerShard     int64
-	size               int64
-	offset             int64
-	bufferMap          map[int]zboxutil.DownloadBuffer
-	downloadStorer     DownloadProgressStorer
-	workdir            string
-	downloadQueue      downloadQueue // Always initialize this queue with max time taken
-	isResume           bool
-	isEnterprise       bool
+	effectiveBlockSize      int // blocksize - encryptionOverHead
+	ecEncoder               reedsolomon.Encoder
+	maskMu                  *sync.Mutex
+	encScheme               encryption.EncryptionScheme
+	shouldVerify            bool
+	blocksPerShard          int64
+	connectionID            string
+	skip                    bool
+	freeRead                bool
+	fRef                    *fileref.FileRef
+	chunksPerShard          int64
+	size                    int64
+	offset                  int64
+	bufferMap               map[int]zboxutil.DownloadBuffer
+	downloadStorer          DownloadProgressStorer
+	workdir                 string
+	downloadQueue           downloadQueue // Always initialize this queue with max time taken
+	isResume                bool
+	isEnterprise            bool
+	storageVersion          int
+	allocOwnerSigningPubKey string
 }
 
 type downloadPriority struct {
@@ -827,8 +830,8 @@ func (req *DownloadRequest) attemptSubmitReadMarker(blobber *blockchain.StorageN
 	lockBlobberReadCtr(req.allocationID, blobber.ID)
 	defer unlockBlobberReadCtr(req.allocationID, blobber.ID)
 	rm := &marker.ReadMarker{
-		ClientID:        client.GetClientID(),
-		ClientPublicKey: client.GetClientPublicKey(),
+		ClientID:        client.Id(req.ClientId),
+		ClientPublicKey: client.PublicKey(),
 		BlobberID:       blobber.ID,
 		AllocationID:    req.allocationID,
 		OwnerID:         req.allocOwnerID,
@@ -845,7 +848,7 @@ func (req *DownloadRequest) attemptSubmitReadMarker(blobber *blockchain.StorageN
 	if err != nil {
 		return fmt.Errorf("error marshaling read marker: %w", err)
 	}
-	httpreq, err := zboxutil.NewRedeemRequest(blobber.Baseurl, req.allocationID, req.allocationTx)
+	httpreq, err := zboxutil.NewRedeemRequest(blobber.Baseurl, req.allocationID, req.allocationTx, req.allocOwnerID)
 	if err != nil {
 		return fmt.Errorf("error creating download request: %w", err)
 	}
@@ -894,7 +897,7 @@ func (req *DownloadRequest) attemptSubmitReadMarker(blobber *blockchain.StorageN
 }
 
 func (req *DownloadRequest) handleReadMarkerError(resp *http.Response, blobber *blockchain.StorageNode, rm *marker.ReadMarker) error {
-	respBody, err := ioutil.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}
@@ -967,9 +970,9 @@ func (req *DownloadRequest) initEC() error {
 // initEncryption will initialize encScheme with client's keys
 func (req *DownloadRequest) initEncryption() (err error) {
 	req.encScheme = encryption.NewEncryptionScheme()
-	mnemonic := client.GetClient().Mnemonic
+	mnemonic := client.Mnemonic()
 	if mnemonic != "" {
-		_, err = req.encScheme.Initialize(client.GetClient().Mnemonic)
+		_, err = req.encScheme.Initialize(client.Mnemonic())
 		if err != nil {
 			return err
 		}
@@ -1118,6 +1121,7 @@ func GetFileRefFromBlobber(allocationID, blobberId, remotePath string) (fRef *fi
 
 func (req *DownloadRequest) getFileRef() (fRef *fileref.FileRef, err error) {
 	listReq := &ListRequest{
+		ClientId:           req.ClientId,
 		remotefilepath:     req.remotefilepath,
 		remotefilepathhash: req.remotefilepathhash,
 		allocationID:       req.allocationID,
@@ -1161,12 +1165,23 @@ func (req *DownloadRequest) getFileMetaConsensus(fMetaResp []*fileMetaResponse) 
 		}
 		actualHash := fmr.fileref.ActualFileHash
 		actualFileHashSignature := fmr.fileref.ActualFileHashSignature
-
-		isValid, err := sys.VerifyWith(
-			req.allocOwnerPubKey,
-			actualFileHashSignature,
-			actualHash,
+		var (
+			isValid bool
+			err     error
 		)
+		if fmr.fileref.SignatureVersion == SignatureV2 {
+			isValid, err = sys.VerifyEd25519With(
+				req.allocOwnerSigningPubKey,
+				actualFileHashSignature,
+				actualHash,
+			)
+		} else {
+			isValid, err = sys.VerifyWith(
+				req.allocOwnerPubKey,
+				actualFileHashSignature,
+				actualHash,
+			)
+		}
 		if err != nil {
 			l.Logger.Error(err)
 			continue
@@ -1210,12 +1225,29 @@ func (req *DownloadRequest) getFileMetaConsensus(fMetaResp []*fileMetaResponse) 
 		if selected.fileref.ActualFileHashSignature != fRef.ActualFileHashSignature {
 			continue
 		}
-		if !req.isEnterprise {
-			isValid, err := sys.VerifyWith(
-				req.allocOwnerPubKey,
-				fRef.ValidationRootSignature,
-				fRef.ActualFileHashSignature+fRef.ValidationRoot,
+		if !req.isEnterprise && req.shouldVerify {
+			hash := fRef.ActualFileHashSignature + fRef.ValidationRoot
+			if req.storageVersion == StorageV2 {
+				hashData := fmt.Sprintf("%s:%s:%s:%s", fRef.ActualFileHash, fRef.ValidationRoot, fRef.FixedMerkleRoot, req.blobbers[i].ID)
+				hash = encrypt.Hash(hashData)
+			}
+			var (
+				isValid bool
+				err     error
 			)
+			if fRef.SignatureVersion == SignatureV2 {
+				isValid, err = sys.VerifyEd25519With(
+					req.allocOwnerSigningPubKey,
+					fRef.ValidationRootSignature,
+					hash,
+				)
+			} else {
+				isValid, err = sys.VerifyWith(
+					req.allocOwnerPubKey,
+					fRef.ValidationRootSignature,
+					hash,
+				)
+			}
 			if err != nil {
 				l.Logger.Error(err, "allocOwnerPubKey: ", req.allocOwnerPubKey, " validationRootSignature: ", fRef.ValidationRootSignature, " actualFileHashSignature: ", fRef.ActualFileHashSignature, " validationRoot: ", fRef.ValidationRoot)
 				continue
