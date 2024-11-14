@@ -56,9 +56,6 @@ func getVersion() string {
 }
 
 func getWasmType() string {
-	if os.Getenv("MODE") != "" {
-		return "enterprise"
-	}
 	return "normal"
 }
 
