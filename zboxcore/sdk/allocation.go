@@ -1373,6 +1373,7 @@ func (a *Allocation) generateDownloadRequest(
 	downloadReq.sig = a.sig
 	downloadReq.allocOwnerPubKey = a.OwnerPublicKey
 	downloadReq.allocOwnerSigningPubKey = a.OwnerSigningPublicKey
+	downloadReq.allocOwnerSigningPrivateKey = a.privateSigningKey
 	downloadReq.ctx, downloadReq.ctxCncl = context.WithCancel(a.ctx)
 	downloadReq.fileHandler = fileHandler
 	downloadReq.localFilePath = localFilePath
@@ -2339,6 +2340,7 @@ func (a *Allocation) GetAuthTicket(path, filename string,
 		ctx:               a.ctx,
 		remotefilepath:    path,
 		remotefilename:    filename,
+		signingPrivateKey: a.privateSigningKey,
 	}
 
 	if referenceType == fileref.DIRECTORY {
@@ -2807,6 +2809,7 @@ func (a *Allocation) downloadFromAuthTicket(fileHandler sys.File, authTicket str
 	downloadReq.allocOwnerID = a.Owner
 	downloadReq.allocOwnerPubKey = a.OwnerPublicKey
 	downloadReq.allocOwnerSigningPubKey = a.OwnerSigningPublicKey
+	downloadReq.allocOwnerSigningPrivateKey = a.privateSigningKey
 	downloadReq.ctx, downloadReq.ctxCncl = context.WithCancel(a.ctx)
 	downloadReq.fileHandler = fileHandler
 	downloadReq.localFilePath = localFilePath

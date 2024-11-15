@@ -383,9 +383,14 @@ func (su *ChunkedUpload) createEncscheme() encryption.EncryptionScheme {
 			return nil
 		}
 	} else {
-		mnemonic := client.Mnemonic()
-		if mnemonic == "" {
-			return nil
+		var mnemonic string
+		if len(su.allocationObj.privateSigningKey) == 0 {
+			mnemonic = client.Mnemonic()
+			if mnemonic == "" {
+				return nil
+			}
+		} else {
+			mnemonic = hex.EncodeToString(su.allocationObj.privateSigningKey)
 		}
 		privateKey, err := encscheme.Initialize(mnemonic)
 		if err != nil {
