@@ -987,6 +987,7 @@ func (req *DownloadRequest) initEncryption(encryptionVersion int) (err error) {
 			}
 			if pubKey != req.authTicket.EncryptionPublicKey {
 				// try with mnemonics
+				logger.Logger.Info("mismatch using mnemonics: ", pubKey, " ", req.authTicket.EncryptionPublicKey)
 				mnemonic := client.Mnemonic()
 				if mnemonic == "" {
 					return errors.New("mnemonic_required", "Mnemonic required for decryption")
@@ -996,6 +997,8 @@ func (req *DownloadRequest) initEncryption(encryptionVersion int) (err error) {
 				if err != nil {
 					return err
 				}
+			} else {
+				logger.Logger.Info("Encryption version 2 equal key", pubKey, " ", req.authTicket.EncryptionPublicKey)
 			}
 		}
 	} else {

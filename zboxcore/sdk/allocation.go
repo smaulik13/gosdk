@@ -448,6 +448,9 @@ func (a *Allocation) InitAllocation() {
 
 func (a *Allocation) generateAndSetOwnerSigningPublicKey() {
 	//create ecdsa public key from signature
+	if a.OwnerPublicKey != client.PublicKey() {
+		return
+	}
 	privateSigningKey, err := generateOwnerSigningKey(a.OwnerPublicKey, a.Owner)
 	if err != nil {
 		l.Logger.Error("Failed to generate owner signing key", zap.Error(err))
