@@ -440,7 +440,7 @@ func (a *Allocation) InitAllocation() {
 	a.startWorker(a.ctx)
 	InitCommitWorker(a.Blobbers)
 	InitBlockDownloader(a.Blobbers, downloadWorkerCount)
-	if a.StorageVersion == StorageV2 {
+	if a.StorageVersion == StorageV2 && a.OwnerPublicKey == client.PublicKey() {
 		a.CheckAllocStatus() //nolint:errcheck
 	}
 	a.initialized = true
@@ -1369,7 +1369,7 @@ func (a *Allocation) generateDownloadRequest(
 		return nil, noBLOBBERS
 	}
 
-	downloadReq := &DownloadRequest{Consensus: Consensus{RWMutex: &sync.RWMutex{}}}
+	downloadReq := &DownloadRequest{Consensus: Consensus{RWMutex: &sync.RWMutex{}}, storageVersion: a.StorageVersion}
 	downloadReq.maskMu = &sync.Mutex{}
 	downloadReq.allocationID = a.ID
 	downloadReq.allocationTx = a.Tx
@@ -2813,7 +2813,12 @@ func (a *Allocation) downloadFromAuthTicket(fileHandler sys.File, authTicket str
 	downloadReq.allocOwnerID = a.Owner
 	downloadReq.allocOwnerPubKey = a.OwnerPublicKey
 	downloadReq.allocOwnerSigningPubKey = a.OwnerSigningPublicKey
-	downloadReq.allocOwnerSigningPrivateKey = a.privateSigningKey
+	//for auth ticket set your own signing key
+	sk, err := generateOwnerSigningKey(client.PublicKey(), client.Id())
+	if err != nil {
+		return err
+	}
+	downloadReq.allocOwnerSigningPrivateKey = sk
 	downloadReq.ctx, downloadReq.ctxCncl = context.WithCancel(a.ctx)
 	downloadReq.fileHandler = fileHandler
 	downloadReq.localFilePath = localFilePath

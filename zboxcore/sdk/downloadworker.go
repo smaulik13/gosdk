@@ -97,27 +97,28 @@ type DownloadRequest struct {
 	fileCallback       func()
 	contentMode        string
 	Consensus
-	effectiveBlockSize          int // blocksize - encryptionOverHead
-	ecEncoder                   reedsolomon.Encoder
-	maskMu                      *sync.Mutex
-	encScheme                   encryption.EncryptionScheme
-	shouldVerify                bool
-	blocksPerShard              int64
-	connectionID                string
-	skip                        bool
-	freeRead                    bool
-	fRef                        *fileref.FileRef
-	chunksPerShard              int64
-	size                        int64
-	offset                      int64
-	bufferMap                   map[int]zboxutil.DownloadBuffer
-	downloadStorer              DownloadProgressStorer
-	workdir                     string
-	downloadQueue               downloadQueue // Always initialize this queue with max time taken
-	isResume                    bool
-	isEnterprise                bool
-	storageVersion              int
-	allocOwnerSigningPubKey     string
+	effectiveBlockSize      int // blocksize - encryptionOverHead
+	ecEncoder               reedsolomon.Encoder
+	maskMu                  *sync.Mutex
+	encScheme               encryption.EncryptionScheme
+	shouldVerify            bool
+	blocksPerShard          int64
+	connectionID            string
+	skip                    bool
+	freeRead                bool
+	fRef                    *fileref.FileRef
+	chunksPerShard          int64
+	size                    int64
+	offset                  int64
+	bufferMap               map[int]zboxutil.DownloadBuffer
+	downloadStorer          DownloadProgressStorer
+	workdir                 string
+	downloadQueue           downloadQueue // Always initialize this queue with max time taken
+	isResume                bool
+	isEnterprise            bool
+	storageVersion          int
+	allocOwnerSigningPubKey string
+	// in case of auth ticket, this key will be of the shared user rather than the owner of the allocation
 	allocOwnerSigningPrivateKey ed25519.PrivateKey
 }
 
@@ -999,6 +1000,23 @@ func (req *DownloadRequest) initEncryption(encryptionVersion int) (err error) {
 				}
 			} else {
 				logger.Logger.Info("Encryption version 2 equal key", pubKey, " ", req.authTicket.EncryptionPublicKey)
+			}
+		} else {
+			mnemonic := client.Mnemonic()
+			if mnemonic == "" {
+				return errors.New("mnemonic_required", "Mnemonic required for decryption")
+			}
+			req.encScheme = encryption.NewEncryptionScheme()
+			_, err = req.encScheme.Initialize(mnemonic)
+			if err != nil {
+				return err
+			}
+			pubKey, err := req.encScheme.GetPublicKey()
+			if err != nil {
+				return err
+			}
+			if pubKey != req.authTicket.EncryptionPublicKey {
+				return errors.New("invalid_signing_key", "signing key is empty")
 			}
 		}
 	} else {
