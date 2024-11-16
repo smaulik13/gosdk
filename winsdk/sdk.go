@@ -287,7 +287,7 @@ func GetPublicEncryptionKey(mnemonics *C.char) *C.char {
 	return WithJSON(zcncore.GetPublicEncryptionKey(m))
 }
 
-// GetPublicEncryptionKey get public encryption key by public and private key
+// GetPublicEncryptionKeyV2 get public encryption key by public and private key
 //
 //	return
 //		{
@@ -295,7 +295,7 @@ func GetPublicEncryptionKey(mnemonics *C.char) *C.char {
 //			"result":"xxxx",
 //		}
 //
-//export GetPublicEncryptionKey
+//export GetPublicEncryptionKeyV2
 func GetPublicEncryptionKeyV2(publicKey, privateKey *C.char) *C.char {
 	defer func() {
 		if r := recover(); r != nil {
