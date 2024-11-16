@@ -975,6 +975,7 @@ func (req *DownloadRequest) initEncryption(encryptionVersion int) (err error) {
 	req.encScheme = encryption.NewEncryptionScheme()
 	var mnemonic string
 	if req.authTicket != nil {
+		logger.Logger.Info("Encryption public key: ", req.authTicket.EncryptionPublicKey)
 		if len(req.allocOwnerSigningPrivateKey) != 0 {
 			_, err := req.encScheme.Initialize(hex.EncodeToString(req.allocOwnerSigningPrivateKey))
 			if err != nil {
@@ -999,6 +1000,7 @@ func (req *DownloadRequest) initEncryption(encryptionVersion int) (err error) {
 		}
 	} else {
 		if encryptionVersion == SignatureV2 {
+			logger.Logger.Info("Encryption version 1")
 			if len(req.allocOwnerSigningPrivateKey) == 0 {
 				return errors.New("invalid_signing_key", "Invalid private signing key")
 			}
@@ -1007,7 +1009,7 @@ func (req *DownloadRequest) initEncryption(encryptionVersion int) (err error) {
 			mnemonic = client.Mnemonic()
 		}
 		if mnemonic != "" {
-			_, err = req.encScheme.Initialize(client.Mnemonic())
+			_, err = req.encScheme.Initialize(mnemonic)
 			if err != nil {
 				return err
 			}
