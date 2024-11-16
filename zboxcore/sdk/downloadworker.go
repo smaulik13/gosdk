@@ -476,7 +476,7 @@ func (req *DownloadRequest) processDownload() {
 	}
 	elapsedInitEC := time.Since(now)
 	if req.encryptedKey != "" {
-		err = req.initEncryption(fRef.SignatureVersion)
+		err = req.initEncryption(fRef.EncryptionVersion)
 		if err != nil {
 			req.errorCB(
 				fmt.Errorf("Error while initializing encryption"), remotePathCB,

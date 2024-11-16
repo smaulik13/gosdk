@@ -76,7 +76,7 @@ func (req *ShareRequest) getAuthTicket(clientID, encPublicKey string) (*marker.A
 	if encPublicKey != "" { // file is encrypted
 		encScheme := encryption.NewEncryptionScheme()
 		var mnemonic string
-		if fRef.SignatureVersion == SignatureV2 {
+		if fRef.EncryptionVersion == SignatureV2 {
 			if len(req.signingPrivateKey) == 0 {
 				return nil, errors.New("wallet_error", "signing private key is empty")
 			}

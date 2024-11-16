@@ -1,6 +1,7 @@
 package zcncore
 
 import (
+	"crypto/ed25519"
 	"encoding/hex"
 	"fmt"
 	"net/http"
@@ -311,6 +312,30 @@ func CryptoJsDecrypt(passphrase, encryptedMessage string) (string, error) {
 func GetPublicEncryptionKey(mnemonic string) (string, error) {
 	encScheme := encryption.NewEncryptionScheme()
 	_, err := encScheme.Initialize(mnemonic)
+	if err != nil {
+		return "", err
+	}
+	return encScheme.GetPublicKey()
+}
+
+func GetPublicEncryptionKeyV2(publicKey, privateKey string) (string, error) {
+	sigScheme := zcncrypto.NewSignatureScheme("bls0chain")
+	err := sigScheme.SetPrivateKey(privateKey)
+	if err != nil {
+		return "", err
+	}
+	hashData := fmt.Sprintf("%s:%s", publicKey, "owner_signing_public_key")
+	sig, err := sigScheme.Sign(hashData)
+	if err != nil {
+		return "", err
+	}
+	decodedSig, err := hex.DecodeString(sig)
+	if err != nil {
+		return "", err
+	}
+	privateSigningKey := ed25519.NewKeyFromSeed(decodedSig[:32])
+	encScheme := encryption.NewEncryptionScheme()
+	_, err = encScheme.Initialize(hex.EncodeToString(privateSigningKey))
 	if err != nil {
 		return "", err
 	}

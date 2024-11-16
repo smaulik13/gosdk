@@ -287,6 +287,26 @@ func GetPublicEncryptionKey(mnemonics *C.char) *C.char {
 	return WithJSON(zcncore.GetPublicEncryptionKey(m))
 }
 
+// GetPublicEncryptionKey get public encryption key by public and private key
+//
+//	return
+//		{
+//			"error":"",
+//			"result":"xxxx",
+//		}
+//
+//export GetPublicEncryptionKey
+func GetPublicEncryptionKeyV2(publicKey, privateKey *C.char) *C.char {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Error("win: crash ", r)
+		}
+	}()
+	pk := C.GoString(publicKey)
+	sk := C.GoString(privateKey)
+	return WithJSON(zcncore.GetPublicEncryptionKeyV2(pk, sk))
+}
+
 // GetLookupHash get lookup hash with allocation id and path
 // ## Inputs:
 //   - allocationID

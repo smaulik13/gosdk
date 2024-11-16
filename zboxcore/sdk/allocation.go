@@ -570,6 +570,7 @@ func (a *Allocation) RepairFile(file sys.File, remotepath string, statusCallback
 			WithStatusCallback(statusCallback),
 			WithEncryptedPoint(ref.EncryptedKeyPoint),
 			WithChunkNumber(RepairBlocks),
+			WithEncryptionVersion(ref.EncryptionVersion),
 		}
 	} else {
 		opts = []ChunkedUploadOption{

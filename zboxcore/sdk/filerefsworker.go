@@ -333,6 +333,7 @@ type SimilarField struct {
 	ActualThumbnailHash string `json:"actual_thumbnail_hash"`
 	CustomMeta          string `json:"custom_meta"`
 	SignatureVersion    int    `json:"signature_version"`
+	EncryptionVersion   int    `json:"encryption_version"`
 }
 
 type RecentlyAddedRefRequest struct {

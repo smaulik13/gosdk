@@ -172,11 +172,12 @@ func CreateChunkedUpload(
 		encryptOnUpload: false,
 		webStreaming:    false,
 
-		consensus:     consensus, //nolint
-		uploadTimeOut: DefaultUploadTimeOut,
-		commitTimeOut: DefaultUploadTimeOut,
-		maskMu:        &sync.Mutex{},
-		opCode:        opCode,
+		consensus:         consensus, //nolint
+		uploadTimeOut:     DefaultUploadTimeOut,
+		commitTimeOut:     DefaultUploadTimeOut,
+		maskMu:            &sync.Mutex{},
+		opCode:            opCode,
+		encryptionVersion: -1,
 	}
 
 	// su.ctx, su.ctxCncl = context.WithCancel(allocationObj.ctx)
@@ -292,7 +293,7 @@ func CreateChunkedUpload(
 
 	su.chunkReader = cReader
 
-	su.formBuilder = CreateChunkedUploadFormBuilder(su.allocationObj.StorageVersion, su.allocationObj.privateSigningKey)
+	su.formBuilder = CreateChunkedUploadFormBuilder(su.allocationObj.StorageVersion, su.encryptionVersion, su.allocationObj.privateSigningKey)
 
 	su.isRepair = isRepair
 	uploadWorker, uploadRequest := calculateWorkersAndRequests(su.allocationObj.DataShards, len(su.blobbers), su.chunkNumber)
@@ -384,13 +385,22 @@ func (su *ChunkedUpload) createEncscheme() encryption.EncryptionScheme {
 		}
 	} else {
 		var mnemonic string
-		if len(su.allocationObj.privateSigningKey) == 0 {
-			mnemonic = client.Mnemonic()
-			if mnemonic == "" {
-				return nil
+		switch su.encryptionVersion {
+		case -1:
+			if len(su.allocationObj.privateSigningKey) == 0 {
+				mnemonic = client.Mnemonic()
+				su.encryptionVersion = 0
+			} else {
+				mnemonic = hex.EncodeToString(su.allocationObj.privateSigningKey)
+				su.encryptionVersion = 1
 			}
-		} else {
+		case 0:
+			mnemonic = client.Mnemonic()
+		case 1:
 			mnemonic = hex.EncodeToString(su.allocationObj.privateSigningKey)
+		}
+		if mnemonic == "" {
+			return nil
 		}
 		privateKey, err := encscheme.Initialize(mnemonic)
 		if err != nil {
