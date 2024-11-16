@@ -998,6 +998,16 @@ func (req *DownloadRequest) initEncryption(encryptionVersion int) (err error) {
 				if err != nil {
 					return err
 				}
+				pubKey, err = req.encScheme.GetPublicKey()
+				if err != nil {
+					return err
+				}
+				if pubKey != req.authTicket.EncryptionPublicKey {
+					logger.Logger.Info("Encryption version 0 mismatch", pubKey, " ", req.authTicket.EncryptionPublicKey)
+					return errors.New("invalid_encryption_key", "Encryption key mismatch")
+				} else {
+					logger.Logger.Info("Encryption version 0 equal key", pubKey, " ", req.authTicket.EncryptionPublicKey)
+				}
 			} else {
 				logger.Logger.Info("Encryption version 2 equal key", pubKey, " ", req.authTicket.EncryptionPublicKey)
 			}
