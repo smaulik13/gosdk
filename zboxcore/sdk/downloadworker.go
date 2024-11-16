@@ -476,6 +476,7 @@ func (req *DownloadRequest) processDownload() {
 	}
 	elapsedInitEC := time.Since(now)
 	if req.encryptedKey != "" {
+		logger.Logger.Info("encryption version: ", fRef.EncryptionVersion)
 		err = req.initEncryption(fRef.EncryptionVersion)
 		if err != nil {
 			req.errorCB(
