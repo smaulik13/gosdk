@@ -481,7 +481,7 @@ func (req *DownloadRequest) processDownload() {
 		err = req.initEncryption(fRef.EncryptionVersion)
 		if err != nil {
 			req.errorCB(
-				fmt.Errorf("Error while initializing encryption"), remotePathCB,
+				fmt.Errorf("Error while initializing encryption "+err.Error()), remotePathCB,
 			)
 			return
 		}

@@ -1377,7 +1377,15 @@ func (a *Allocation) generateDownloadRequest(
 	downloadReq.sig = a.sig
 	downloadReq.allocOwnerPubKey = a.OwnerPublicKey
 	downloadReq.allocOwnerSigningPubKey = a.OwnerSigningPublicKey
-	downloadReq.allocOwnerSigningPrivateKey = a.privateSigningKey
+	if len(a.privateSigningKey) == 0 {
+		sk, err := generateOwnerSigningKey(client.PublicKey(), client.Id())
+		if err != nil {
+			return nil, err
+		}
+		downloadReq.allocOwnerSigningPrivateKey = sk
+	} else {
+		downloadReq.allocOwnerSigningPrivateKey = a.privateSigningKey
+	}
 	downloadReq.ctx, downloadReq.ctxCncl = context.WithCancel(a.ctx)
 	downloadReq.fileHandler = fileHandler
 	downloadReq.localFilePath = localFilePath
