@@ -974,9 +974,8 @@ func (req *DownloadRequest) initEC() error {
 // initEncryption will initialize encScheme with client's keys
 func (req *DownloadRequest) initEncryption(encryptionVersion int) (err error) {
 	req.encScheme = encryption.NewEncryptionScheme()
-	var mnemonic string
+	var entropy string
 	if req.authTicket != nil {
-		logger.Logger.Info("Encryption public key: ", req.authTicket.EncryptionPublicKey)
 		if len(req.allocOwnerSigningPrivateKey) != 0 {
 			_, err := req.encScheme.Initialize(hex.EncodeToString(req.allocOwnerSigningPrivateKey))
 			if err != nil {
@@ -988,13 +987,12 @@ func (req *DownloadRequest) initEncryption(encryptionVersion int) (err error) {
 			}
 			if pubKey != req.authTicket.EncryptionPublicKey {
 				// try with mnemonics
-				logger.Logger.Info("mismatch using mnemonics: ", pubKey, " ", req.authTicket.EncryptionPublicKey)
-				mnemonic = client.Mnemonic()
-				if mnemonic == "" {
+				entropy = client.Mnemonic()
+				if entropy == "" {
 					return errors.New("mnemonic_required", "Mnemonic required for decryption")
 				}
 				req.encScheme = encryption.NewEncryptionScheme()
-				_, err = req.encScheme.Initialize(mnemonic)
+				_, err = req.encScheme.Initialize(entropy)
 				if err != nil {
 					return err
 				}
@@ -1003,21 +1001,16 @@ func (req *DownloadRequest) initEncryption(encryptionVersion int) (err error) {
 					return err
 				}
 				if pubKey != req.authTicket.EncryptionPublicKey {
-					logger.Logger.Info("Encryption version 0 mismatch", pubKey, " ", req.authTicket.EncryptionPublicKey)
 					return errors.New("invalid_encryption_key", "Encryption key mismatch")
-				} else {
-					logger.Logger.Info("Encryption version 0 equal key", pubKey, " ", req.authTicket.EncryptionPublicKey)
 				}
-			} else {
-				logger.Logger.Info("Encryption version 2 equal key", pubKey, " ", req.authTicket.EncryptionPublicKey)
 			}
 		} else {
-			mnemonic = client.Mnemonic()
-			if mnemonic == "" {
+			entropy = client.Mnemonic()
+			if entropy == "" {
 				return errors.New("mnemonic_required", "Mnemonic required for decryption")
 			}
 			req.encScheme = encryption.NewEncryptionScheme()
-			_, err = req.encScheme.Initialize(mnemonic)
+			_, err = req.encScheme.Initialize(entropy)
 			if err != nil {
 				return err
 			}
@@ -1031,16 +1024,15 @@ func (req *DownloadRequest) initEncryption(encryptionVersion int) (err error) {
 		}
 	} else {
 		if encryptionVersion == SignatureV2 {
-			logger.Logger.Info("Encryption version 1")
 			if len(req.allocOwnerSigningPrivateKey) == 0 {
 				return errors.New("invalid_signing_key", "Invalid private signing key")
 			}
-			mnemonic = hex.EncodeToString(req.allocOwnerSigningPrivateKey)
+			entropy = hex.EncodeToString(req.allocOwnerSigningPrivateKey)
 		} else {
-			mnemonic = client.Mnemonic()
+			entropy = client.Mnemonic()
 		}
-		if mnemonic != "" {
-			_, err = req.encScheme.Initialize(mnemonic)
+		if entropy != "" {
+			_, err = req.encScheme.Initialize(entropy)
 			if err != nil {
 				return err
 			}

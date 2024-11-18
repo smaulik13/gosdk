@@ -384,25 +384,25 @@ func (su *ChunkedUpload) createEncscheme() encryption.EncryptionScheme {
 			return nil
 		}
 	} else {
-		var mnemonic string
+		var entropy string
 		switch su.encryptionVersion {
 		case -1:
 			if len(su.allocationObj.privateSigningKey) == 0 {
-				mnemonic = client.Mnemonic()
+				entropy = client.Mnemonic()
 				su.encryptionVersion = 0
 			} else {
-				mnemonic = hex.EncodeToString(su.allocationObj.privateSigningKey)
+				entropy = hex.EncodeToString(su.allocationObj.privateSigningKey)
 				su.encryptionVersion = 1
 			}
 		case 0:
-			mnemonic = client.Mnemonic()
+			entropy = client.Mnemonic()
 		case 1:
-			mnemonic = hex.EncodeToString(su.allocationObj.privateSigningKey)
+			entropy = hex.EncodeToString(su.allocationObj.privateSigningKey)
 		}
-		if mnemonic == "" {
+		if entropy == "" {
 			return nil
 		}
-		privateKey, err := encscheme.Initialize(mnemonic)
+		privateKey, err := encscheme.Initialize(entropy)
 		if err != nil {
 			return nil
 		}

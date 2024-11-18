@@ -75,19 +75,19 @@ func (req *ShareRequest) getAuthTicket(clientID, encPublicKey string) (*marker.A
 
 	if encPublicKey != "" { // file is encrypted
 		encScheme := encryption.NewEncryptionScheme()
-		var mnemonic string
+		var entropy string
 		if fRef.EncryptionVersion == SignatureV2 {
 			if len(req.signingPrivateKey) == 0 {
 				return nil, errors.New("wallet_error", "signing private key is empty")
 			}
-			mnemonic = hex.EncodeToString(req.signingPrivateKey)
+			entropy = hex.EncodeToString(req.signingPrivateKey)
 		} else {
-			mnemonic = client.Wallet().Mnemonic
+			entropy = client.Wallet().Mnemonic
 		}
-		if mnemonic == "" {
+		if entropy == "" {
 			return nil, errors.New("wallet_error", "wallet mnemonic is empty")
 		}
-		if _, err := encScheme.Initialize((mnemonic)); err != nil {
+		if _, err := encScheme.Initialize((entropy)); err != nil {
 			return nil, err
 		}
 
