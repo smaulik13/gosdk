@@ -459,7 +459,6 @@ func (a *Allocation) generateAndSetOwnerSigningPublicKey() {
 	if a.OwnerSigningPublicKey == "" && !a.Finalized && !a.Canceled {
 		pubKey := privateSigningKey.Public().(ed25519.PublicKey)
 		a.OwnerSigningPublicKey = hex.EncodeToString(pubKey)
-		//TODO: save this public key to blockchain
 		hash, _, err := UpdateAllocation(0, false, a.ID, 0, "", "", "", a.OwnerSigningPublicKey, false, nil)
 		if err != nil {
 			l.Logger.Error("Failed to update owner signing public key ", err, " allocationID: ", a.ID, " hash: ", hash)
