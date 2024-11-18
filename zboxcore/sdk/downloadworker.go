@@ -1012,7 +1012,7 @@ func (req *DownloadRequest) initEncryption(encryptionVersion int) (err error) {
 				logger.Logger.Info("Encryption version 2 equal key", pubKey, " ", req.authTicket.EncryptionPublicKey)
 			}
 		} else {
-			mnemonic := client.Mnemonic()
+			mnemonic = client.Mnemonic()
 			if mnemonic == "" {
 				return errors.New("mnemonic_required", "Mnemonic required for decryption")
 			}

@@ -87,7 +87,7 @@ func (req *ShareRequest) getAuthTicket(clientID, encPublicKey string) (*marker.A
 		if mnemonic == "" {
 			return nil, errors.New("wallet_error", "wallet mnemonic is empty")
 		}
-		if _, err := encScheme.Initialize((client.Wallet().Mnemonic)); err != nil {
+		if _, err := encScheme.Initialize((mnemonic)); err != nil {
 			return nil, err
 		}
 
