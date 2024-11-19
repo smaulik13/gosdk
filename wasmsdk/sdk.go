@@ -160,15 +160,5 @@ func send(toClientID string, tokens uint64, fee uint64, desc string) (string, er
 	if err != nil {
 		return "", err
 	}
-
-	res := map[string]interface{}{
-		"confirmation": txn.OutputHash,
-	}
-
-	resJson, err := json.Marshal(res)
-	if err != nil {
-		return "", err
-	}
-
 	return string(resJson), nil
 }
