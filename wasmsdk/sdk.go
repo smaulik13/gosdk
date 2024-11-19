@@ -161,7 +161,14 @@ func send(toClientID string, tokens uint64, fee uint64, desc string) (string, er
 		return "", err
 	}
 
-	fmt.Print("Transaction Output: ", txn.TransactionOutput)
+	res := map[string]interface{}{
+		"response": txn.OutputHash,
+	}
 
-	return txn.TransactionOutput, nil
+	resJson, err := json.Marshal(res)
+	if err != nil {
+		return "", err
+	}
+
+	return string(resJson), nil
 }

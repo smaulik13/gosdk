@@ -661,7 +661,6 @@ func SmartContractTxnValueFee(scAddress string, sn SmartContractTxnData,
 
 		if t.TransactionType == TxnTypeSend {
 			t.TransactionOutput = res
-			fmt.Print("Send Transaction Output : ", res)
 		}
 
 		return t.Hash, t.TransactionOutput, t.TransactionNonce, t, nil
