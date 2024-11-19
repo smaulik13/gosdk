@@ -161,5 +161,7 @@ func send(toClientID string, tokens uint64, fee uint64, desc string) (string, er
 		return "", err
 	}
 
+	fmt.Print("Transaction Output: ", txn.TransactionOutput)
+
 	return txn.TransactionOutput, nil
 }
