@@ -162,7 +162,7 @@ func send(toClientID string, tokens uint64, fee uint64, desc string) (string, er
 	}
 
 	res := map[string]interface{}{
-		"response": txn.OutputHash,
+		"confirmation": txn.OutputHash,
 	}
 
 	resJson, err := json.Marshal(res)
