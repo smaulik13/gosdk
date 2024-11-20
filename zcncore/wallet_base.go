@@ -320,7 +320,11 @@ func GetPublicEncryptionKey(mnemonic string) (string, error) {
 }
 
 func GetPublicEncryptionKeyV2(publicKey string) (string, error) {
+	if client.GetWallet() == nil {
+		return "", errors.New("wallet not found")
+	}
 	if client.PublicKey() != publicKey {
+		fmt.Println("public key mismatch", client.PublicKey(), publicKey)
 		return "", errors.New("public_key_mismatch")
 	}
 	hashData := fmt.Sprintf("%s:%s", publicKey, "owner_signing_public_key")
