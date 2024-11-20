@@ -15,6 +15,7 @@ import (
 	"errors"
 
 	"github.com/0chain/gosdk/core/client"
+	rawencryption "github.com/0chain/gosdk/core/encryption"
 	"github.com/0chain/gosdk/core/logger"
 	"github.com/0chain/gosdk/core/version"
 	"github.com/0chain/gosdk/core/zcncrypto"
@@ -318,14 +319,12 @@ func GetPublicEncryptionKey(mnemonic string) (string, error) {
 	return encScheme.GetPublicKey()
 }
 
-func GetPublicEncryptionKeyV2(publicKey, privateKey string) (string, error) {
-	sigScheme := zcncrypto.NewSignatureScheme("bls0chain")
-	err := sigScheme.SetPrivateKey(privateKey)
-	if err != nil {
-		return "", err
+func GetPublicEncryptionKeyV2(publicKey string) (string, error) {
+	if client.PublicKey() != publicKey {
+		return "", errors.New("public_key_mismatch")
 	}
 	hashData := fmt.Sprintf("%s:%s", publicKey, "owner_signing_public_key")
-	sig, err := sigScheme.Sign(hashData)
+	sig, err := client.Sign(rawencryption.Hash(hashData))
 	if err != nil {
 		return "", err
 	}
