@@ -469,6 +469,8 @@ func (a *Allocation) generateAndSetOwnerSigningPublicKey() {
 	} else if a.OwnerSigningPublicKey != "" {
 		pubKey := privateSigningKey.Public().(ed25519.PublicKey)
 		l.Logger.Info("Owner signing public key already exists: ", a.OwnerSigningPublicKey, " generated: ", hex.EncodeToString(pubKey))
+	} else {
+		return
 	}
 	a.privateSigningKey = privateSigningKey
 }
