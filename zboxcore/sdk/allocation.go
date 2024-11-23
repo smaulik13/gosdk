@@ -456,7 +456,7 @@ func (a *Allocation) generateAndSetOwnerSigningPublicKey() {
 		l.Logger.Error("Failed to generate owner signing key", zap.Error(err))
 		return
 	}
-	if a.OwnerSigningPublicKey == "" && !a.Finalized && !a.Canceled {
+	if a.OwnerSigningPublicKey == "" && !a.Finalized && !a.Canceled && client.Wallet().IsSplit {
 		pubKey := privateSigningKey.Public().(ed25519.PublicKey)
 		a.OwnerSigningPublicKey = hex.EncodeToString(pubKey)
 		hash, _, err := UpdateAllocation(0, false, a.ID, 0, "", "", "", a.OwnerSigningPublicKey, false, nil)
@@ -466,9 +466,11 @@ func (a *Allocation) generateAndSetOwnerSigningPublicKey() {
 		}
 		l.Logger.Info("Owner signing public key updated with transaction : ", hash, " ownerSigningPublicKey : ", a.OwnerSigningPublicKey)
 		a.Tx = hash
-	} else {
+	} else if a.OwnerSigningPublicKey != "" {
 		pubKey := privateSigningKey.Public().(ed25519.PublicKey)
 		l.Logger.Info("Owner signing public key already exists: ", a.OwnerSigningPublicKey, " generated: ", hex.EncodeToString(pubKey))
+	} else {
+		return
 	}
 	a.privateSigningKey = privateSigningKey
 }
