@@ -1037,7 +1037,7 @@ func downloadBlocks(allocId, remotePath, authTicket, lookupHash, writeChunkFuncN
 		fh = mf
 		defer sys.Files.Remove(pathHash) //nolint
 	} else {
-		fh = jsbridge.NewFileCallbackWriter(writeChunkFuncName)
+		fh = jsbridge.NewFileCallbackWriter(writeChunkFuncName, lookupHash)
 	}
 
 	wg.Add(1)
