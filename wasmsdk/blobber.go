@@ -1037,6 +1037,7 @@ func downloadBlocks(allocId, remotePath, authTicket, lookupHash, writeChunkFuncN
 		fh = mf
 		defer sys.Files.Remove(pathHash) //nolint
 	} else {
+		fmt.Println("downloadBlocks", writeChunkFuncName)
 		fh = jsbridge.NewFileCallbackWriter(writeChunkFuncName, lookupHash)
 		if fh == nil {
 			return nil, fmt.Errorf("could not create file writer, callback function not found")

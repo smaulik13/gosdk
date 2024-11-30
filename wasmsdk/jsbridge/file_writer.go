@@ -175,7 +175,7 @@ const bufCallbackCap = 4 * 1024 * 1024 //4MB
 
 func NewFileCallbackWriter(writeChunkFuncName, lookupHash string) *FileCallbackWriter {
 	writeChunk := js.Global().Get(writeChunkFuncName)
-	if writeChunk.IsNull() {
+	if !writeChunk.Truthy() {
 		return nil
 	}
 	return &FileCallbackWriter{
