@@ -386,7 +386,8 @@ func TestAllocation_dispatchWork(t *testing.T) {
 	})
 	t.Run("Test_Cover_Repair_Request", func(t *testing.T) {
 		go a.dispatchWork(context.Background())
-		a.repairChan <- &RepairRequest{listDir: &ListResult{}}
+		repairCtx, repairCtxCancel := context.WithCancel(context.Background())
+		a.repairChan <- &RepairRequest{listDir: &ListResult{}, repairCtx: repairCtx, repairCtxCancel: repairCtxCancel}
 	})
 }
 
