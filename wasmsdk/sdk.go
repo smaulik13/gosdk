@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+
 	"github.com/0chain/gosdk/core/client"
 	"github.com/0chain/gosdk/core/encryption"
 	"github.com/0chain/gosdk/core/imageutil"
@@ -52,6 +53,10 @@ func initSDKs(chainID, blockWorker, signatureScheme string,
 // getVersion retrieve the sdk version
 func getVersion() string {
 	return sdk.GetVersion()
+}
+
+func getWasmType() string {
+	return "normal"
 }
 
 var sdkLogger *logger.Logger
@@ -151,10 +156,9 @@ func makeSCRestAPICall(scAddress, relativePath, paramsJson string) (string, erro
 //   - fee is the transaction fee
 //   - desc is the description of the transaction
 func send(toClientID string, tokens uint64, fee uint64, desc string) (string, error) {
-	hash, _, _, _, err := zcncore.Send(toClientID, tokens, desc)
+	_, _, _, txn, err := zcncore.Send(toClientID, tokens, desc)
 	if err != nil {
 		return "", err
 	}
-
-	return hash, nil
+	return txn.TransactionOutput, nil
 }
