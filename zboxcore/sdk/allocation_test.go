@@ -2298,7 +2298,11 @@ func TestAllocation_CancelRepair(t *testing.T) {
 		{
 			name: "Test_Success",
 			setup: func(t *testing.T, a *Allocation) (teardown func(t *testing.T)) {
-				a.repairRequestInProgress = &RepairRequest{}
+				ctx, cancel := context.WithCancel(context.Background())
+				a.repairRequestInProgress = &RepairRequest{
+					repairCtx:       ctx,
+					repairCtxCancel: cancel,
+				}
 				return nil
 			},
 		},
