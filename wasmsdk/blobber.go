@@ -497,7 +497,9 @@ func multiDownload(allocationID, jsonMultiDownloadOptions, authTicket, callbackF
 		}
 		var mf sys.File
 		if option.DownloadToDisk {
-			terminateWorkersWithAllocation(alloc)
+			if option.SuggestedName != "" {
+				fileName = option.SuggestedName
+			}
 			mf, err = jsbridge.NewFileWriter(fileName)
 			if err != nil {
 				PrintError(err.Error())
@@ -608,6 +610,7 @@ type MultiDownloadOption struct {
 	RemoteFileName   string `json:"remoteFileName"`             //Required only for file download with auth ticket
 	RemoteLookupHash string `json:"remoteLookupHash,omitempty"` //Required only for file download with auth ticket
 	DownloadToDisk   bool   `json:"downloadToDisk"`
+	SuggestedName    string `json:"suggestedName,omitempty"` //Suggested name for the file when downloading to disk, if empty will use base of remote path
 }
 
 // MultiOperation do copy, move, delete and createdir operation together
