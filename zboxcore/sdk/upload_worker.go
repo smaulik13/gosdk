@@ -28,7 +28,10 @@ type UploadOperation struct {
 	lookupHash    string
 }
 
-var ErrPauseUpload = errors.New("upload paused by user")
+var (
+	ErrPauseUpload  = errors.New("upload paused by user")
+	ErrCancelUpload = errors.New("upload canceled by user")
+)
 
 func (uo *UploadOperation) Process(allocObj *Allocation, connectionID string) ([]fileref.RefEntity, zboxutil.Uint128, error) {
 	if uo.isDownload {
@@ -156,7 +159,7 @@ func (uo *UploadOperation) ProcessChangeV2(trie *wmpt.WeightedMerkleTrie, change
 	fileMetaRawHash := ref.GetFileMetaHashV2()
 	err := trie.Update(decodedKey, fileMetaRawHash, uint64(ref.NumBlocks))
 	if err != nil {
-		l.Logger.Error("Error updating trie", zap.Error(err))
+		l.Logger.Error("Error updating trie ", err.Error())
 		return err
 	}
 	return nil

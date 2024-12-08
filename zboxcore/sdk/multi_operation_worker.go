@@ -36,8 +36,14 @@ type MultiOperationOption func(mo *MultiOperation)
 
 func WithRepair() MultiOperationOption {
 	return func(mo *MultiOperation) {
-		mo.Consensus.consensusThresh = 0
+		mo.Consensus.consensusThresh = 1
 		mo.isRepair = true
+	}
+}
+
+func WithContext(ctx context.Context) MultiOperationOption {
+	return func(mo *MultiOperation) {
+		mo.ctx, mo.ctxCncl = context.WithCancelCause(ctx)
 	}
 }
 
@@ -321,6 +327,11 @@ func (mo *MultiOperation) Process() error {
 		l.Logger.Error("consensus not met", activeBlobbers, mo.consensusThresh)
 		return errors.New("consensus_not_met", fmt.Sprintf("Active blobbers %d is less than consensus threshold %d", activeBlobbers, mo.consensusThresh))
 	}
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
 	if mo.allocationObj.StorageVersion == StorageV2 {
 		return mo.commitV2()
 	}
@@ -431,9 +442,8 @@ func (mo *MultiOperation) commitV2() error {
 	errSlice := make([]error, len(commitReqs))
 	for idx, commitReq := range commitReqs {
 		if commitReq.result != nil {
-			if commitReq.result.Success {
-				mo.consensus += commitReq.commitMask.CountOnes()
-			} else {
+			mo.consensus += commitReq.commitMask.CountOnes()
+			if !commitReq.result.Success {
 				errSlice[idx] = errors.New("commit_failed", commitReq.result.ErrorMessage)
 				l.Logger.Error("Commit failed ", commitReq.result.ErrorMessage)
 			}
